@@ -19,7 +19,7 @@ body {
 body::before {
   content: "";
   position: fixed;
-  background:  linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)),url("../img/descarga.jpeg") top right no-repeat;
+  background:  linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)),url("../img/wp4020129.jpg") top right no-repeat;
   background-size: cover;
   left: 0;
   right: 0;
