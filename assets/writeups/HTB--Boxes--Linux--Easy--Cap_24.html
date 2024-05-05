@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Cap</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/style.css" type="text/css" />
+</head>
+<body>
+<div class='page'><h1 class='title'>Cap</h1><br/><p><ol><li>Realizo un escaneo de puertos<strong> nmap -Pn -sV -sC -p- --open 10.10.10.245 -oN scan.txt</strong></li><li>Encontramos los servicios HTTP, FTP y SSH</li><li>Añado la dirección ip a mi lista de dominios <strong>nano /etc/hosts</strong></li><li>Al poner el host en el navegador no da acceso a un dashboard</li><li>Hay un botón de Download por lo que voy a interceptar su accición con Burpsuite</li><li>No nos devuelve nada interesante</li><li>Nos descarga un archivo .pcap (archivo de wireshark)</li></ol></p><p>  <img src="images/24-1.png" alt="images/24-1.png" /><ol><li>Abrimos el archivo con Wireshark</li><li>Si analizamos el tráfico encontramos las credenciales de un usuario </li></ol><img src="images/24-2.png" alt="images/24-2.png" /><ol><li>Pruebo a entrar con ese usuario nathan por ssh</li><li>Encuentro la flag user.txt</li><li>Paso Linpeas a la máquina atacada para ver una posible escalada de privilegios</li></ol></p><p>  <img src="images/24-3.png" alt="images/24-3.png" /><ol><li>Ejecuto linpeas y hago que los resultado se peguen en un txt  <strong> ./linpeas.sh &gt; linpeas.txt</strong></li><li>Encuentro un bind mal configurado gracias a LinPeas</li></ol></p><p>  <img src="images/24-4.png" alt="images/24-4.png" /><ol><li>Busco en GTFOBinds y encuentro este comando<strong> python3.8 -c &#39;import os; os.setuid(0); os.system(&quot;/bin/bash&quot;)&#39;</strong></li><li>Consigo escalar privilegios y consigo la flag del root</li></ol></p><p align="center"></p></div>
+</body>
+</html>

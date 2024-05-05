@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Photon Lockdown</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/style.css" type="text/css" />
+</head>
+<body>
+<div class='page'><h1 class='title'>Photon Lockdown</h1><br/><p><ol><li>Hago un unzip de archivo y encuentro 3 archivos</li><li>Hago un cat a fwu_ver y encuentro la versión → 3.0.5</li><li>Hago un file rootfs y me devuelve esto → rootfs: Squashfs filesystem, little endian, version 4.0, zlib compressed.</li><li>Descomprimo el archivo con →  <strong>unsquashfs</strong> rootfs</li><li>Con el comando grep busco en todos los archivos txt,conf,xml,php que contenga HTB →<strong> grep --include=*.{txt,conf,xml,php} -rnw &#39;.&#39; -e &#39;HTB&#39; 2&gt;/dev/null</strong></li></ol></p><p align="center"></p></div>
+</body>
+</html>
