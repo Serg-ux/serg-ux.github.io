@@ -1,0 +1,71 @@
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background:  linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)),url("../img/wp4020129.jpg") top right no-repeat;
+    background-size: cover;
+    color: #333;
+}
+
+.page {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+h1.title {
+    
+    text-align: center;
+    color: #ff0000;
+    font-size: 2.5em;
+    margin-bottom: 20px;
+}
+
+p, li {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+}
+
+ol {
+    padding-left: 20px;
+}
+
+/* Styling for code and strong elements */
+strong {
+    background: #e7f3fe;
+    border-left: 4px solid #2196F3;
+    padding: 2px 10px;
+    font-family: 'Courier New', monospace;
+    display: inline-block;
+    margin: 10px 0;
+    color: #333;
+}
+
+/* Image styles */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px 0;
+    border-radius: 8px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .page {
+        padding: 10px;
+    }
+
+    h1.title {
+        font-size: 2em;
+    }
+
+    p, li {
+        font-size: 1em;
+    }
+}

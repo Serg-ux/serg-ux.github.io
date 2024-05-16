@@ -4,7 +4,7 @@
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <title>Broker</title>
   <meta name="generator" content="CherryTree">
-  <link rel="stylesheet" href="../../assets/css/style.css" type="text/css" />
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
 <div class='page'><h1 class='title'>Broker</h1><br/><p><ol><li>Añado la dirección ip a mi lista de hosts <strong>nano /etc/hosts</strong></li><li>Realizo un nmap para ver los puertos abiertos en el host <strong>nmap -Pn -sV -sC -p- --open 10.10.11.243 -oN scan.txt</strong></li><li>Parece ser que puedo entrar por el servicio apachemq </li><li>Encuentro el CVE-2023-46604 el cual se puede usar para obtener un RCE </li></ol><img src="images/11-1.png" alt="images/11-1.png" /><ol><li>Para realizar la escalada de privilegios pruebo a ver donde tengo privilegios <strong>sudo -l</strong></li><li>Puedo usar nginx para arrancar un servidor como root</li><li>Copio el archivo nginx.conf y lo pego en la carpeta /tmp</li><li>Ejecuto en comando para arrancar con nginx<strong> sudo nginx -c /tmp/pwnd.conf</strong></li><li>Hago un curl como para una web solo que lo hago al servidor local al archivo root.txt <strong>curl 127.0.0.1:9001/root.txt</strong></li></ol></p><p align="center"></p></div>
