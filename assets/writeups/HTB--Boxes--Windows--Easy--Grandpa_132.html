@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Grandpa</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+<div class='page'><h1 class='title'>Grandpa</h1><br/><p>Escaneo de puertos</p><p></p><p>	<strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN grandpa_scan &lt;IP&gt;</strong></p><p></p><p>Puerto 80 abierto (HTTP) versión <strong>Microsoft IIS httpd 6.0</strong></p><p></p><p>Buscando en searchsploit encuentro que tiene varias vulns</p><p></p><p><img src="images/132-1.png" alt="images/132-1.png" /></p><p></p><p>Msf tiene un módulo para vulnerar httpd que sería un Buffer Overflow remoto</p><p></p><p>Pruebo y obtengo una sesión de meterpreter</p><p></p><p><img src="images/132-2.png" alt="images/132-2.png" /></p><p></p><p>Esta el usuario Harry y el usuario Administrator pero no puedo acceder a ninguno de ellos</p><p></p><p>Como no se muy bien por donde tirar usare el modulo suggester para ver por donde hacer el privesc</p><p></p><p><img src="images/132-3.png" alt="images/132-3.png" /></p><p></p><p>Me da que estos exploits son válidos</p><p></p><p>Un buen truco en este punto sería migrar a un proceso del usuario<strong> NT AUTHORITY\NETWORK</strong></p><p></p><p><img src="images/132-4.png" alt="images/132-4.png" /></p><p></p><p>Uso el exploit <strong>exploit/windows/local/ms14_070_tcpip_ioctl </strong></p><p></p><p>Lo ejecuto y ahora soy Administrador</p><p></p><p><img src="images/132-5.png" alt="images/132-5.png" /></p></div>
+</body>
+</html>
