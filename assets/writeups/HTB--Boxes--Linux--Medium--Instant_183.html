@@ -7,6 +7,111 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Instant</h1><br/><p>Portscan</p><p></p><p><strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n --stats-every=5s -Pn -oN instant_scan 10.10.11.37</strong></p><p></p><p>We need to add the domain name to our hosts file</p><p></p><p><img src="images/183-1.png" alt="images/183-1.png" /></p><p></p><p>I try to enumerate subdomains and directories but i don&#39;t find any interesting</p><p></p><p>We can download a .apk file so let&#39;s download it and analyse it with jadx</p><p></p><p>With<strong> jadx-gui</strong> i open the .apk file to find usefull information</p><p></p><p><img src="images/183-2.png" alt="images/183-2.png" /></p><p></p><p>On the class AdminActivities i find a Admin JWT</p><p></p><p><img src="images/183-3.png" alt="images/183-3.png" /></p><p></p><p>Also i found two subdomains</p><p></p><p><img src="images/183-4.png" alt="images/183-4.png" /></p><p></p><p>On first subdomain there is nothing interesting</p><p></p><p>On swagger-ui.instant.htb We can see the log</p><p></p><p>I intercept the GET request with Burpsuite to see the request and the response</p><p></p><p>Using the JWT we have a LFI</p><p></p><p><img src="images/183-5.png" alt="images/183-5.png" /></p><p></p><p><img src="images/183-6.png" alt="images/183-6.png" /></p><p></p><p>Users → shirohige</p><p></p><p>I can read the id_rsa for the user shirohige</p><p></p><p><img src="images/183-7.png" alt="images/183-7.png" /></p><p></p><p><img src="images/183-8.png" alt="images/183-8.png" /></p><p></p><p>I store this id_rsa and access to the machine throught ssh </p><p></p><p><img src="images/183-9.png" alt="images/183-9.png" /></p><p></p><p><img src="images/183-10.png" alt="images/183-10.png" /></p><p></p><p><img src="images/183-11.png" alt="images/183-11.png" /></p><p></p><p>Enumerating directories i find the directory backups</p><p></p><p><img src="images/183-12.png" alt="images/183-12.png" /></p><p></p><p>We have a sessions backup</p><p></p><p><img src="images/183-13.png" alt="images/183-13.png" /></p><p></p><p>I pass the file.dat to my attacker machine with wget and python3 http.server</p><p></p><p><img src="images/183-14.png" alt="images/183-14.png" /></p><p></p><p><img src="images/183-15.png" alt="images/183-15.png" /></p><p></p><p>In the cracked.txt i have the creds for the user root</p><p></p><p><img src="images/183-16.png" alt="images/183-16.png" /></p><p></p></div>
+<div class="page">
+<h1 class="title">Instant</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>
+I started by performing a full TCP port scan against the target to identify exposed services and gather banner information.
+</p>
+<pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n --stats-every=5s -Pn -oN instant_scan 10.10.11.37</code></pre>
+
+<p>
+Based on the scan results, the application relied on a specific domain name, which needed to be added to the local <code>/etc/hosts</code> file to ensure proper resolution.
+</p>
+<img src="images/183-1.png" alt="images/183-1.png" />
+
+<p>
+I attempted to enumerate subdomains and directories, but this did not reveal any immediately interesting attack vectors.
+</p>
+</section>
+
+<section>
+<h2>Enumeration / Analysis</h2>
+<p>
+While exploring the main web application, I noticed that it allowed downloading an Android application package (<code>.apk</code>). Since mobile applications often contain hardcoded secrets or endpoints, I downloaded the file for static analysis.
+</p>
+
+<p>
+Using <code>jadx-gui</code>, I decompiled the APK to review its source code and search for sensitive information.
+</p>
+<img src="images/183-2.png" alt="images/183-2.png" />
+
+<p>
+Within the <code>AdminActivities</code> class, I discovered a hardcoded JSON Web Token (JWT) associated with administrative functionality.
+</p>
+<img src="images/183-3.png" alt="images/183-3.png" />
+
+<p>
+The APK analysis also revealed two additional subdomains referenced by the application.
+</p>
+<img src="images/183-4.png" alt="images/183-4.png" />
+
+<p>
+The first subdomain did not expose any interesting functionality. However, the second one, <code>swagger-ui.instant.htb</code>, exposed a Swagger interface where application logs could be viewed.
+</p>
+
+<p>
+I intercepted a GET request to this endpoint using Burp Suite in order to inspect both the request structure and the server response.
+</p>
+
+<p>
+By supplying the previously discovered admin JWT, I identified a Local File Inclusion vulnerability that allowed arbitrary file reads on the server.
+</p>
+<img src="images/183-5.png" alt="images/183-5.png" />
+<img src="images/183-6.png" alt="images/183-6.png" />
+
+<p>
+Using this vulnerability, I enumerated system users and identified a valid user account named <code>shirohige</code>.
+</p>
+
+<p>
+I then leveraged the LFI to read the private SSH key of this user directly from the filesystem.
+</p>
+<img src="images/183-7.png" alt="images/183-7.png" />
+<img src="images/183-8.png" alt="images/183-8.png" />
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>
+After extracting the private key, I saved it locally and used it to authenticate to the target system via SSH as the user <code>shirohige</code>.
+</p>
+<img src="images/183-9.png" alt="images/183-9.png" />
+<img src="images/183-10.png" alt="images/183-10.png" />
+<img src="images/183-11.png" alt="images/183-11.png" />
+
+<p>
+Once logged in, I began local enumeration of the filesystem. During this process, I discovered a directory named <code>backups</code>, which appeared to contain archived data.
+</p>
+<img src="images/183-12.png" alt="images/183-12.png" />
+
+<p>
+Inside this directory, I found a backup file related to application sessions.
+</p>
+<img src="images/183-13.png" alt="images/183-13.png" />
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>
+To analyze the backup further, I transferred the session backup file to my attacking machine using a temporary Python HTTP server and <code>wget</code>.
+</p>
+<img src="images/183-14.png" alt="images/183-14.png" />
+<img src="images/183-15.png" alt="images/183-15.png" />
+
+<p>
+After processing and cracking the extracted data, I recovered credentials belonging to the <code>root</code> user.
+</p>
+<img src="images/183-16.png" alt="images/183-16.png" />
+
+<p>
+With valid root credentials obtained, full administrative access to the system was achieved, completing the compromise.
+</p>
+</section>
+
+</div>
 </body>
+
 </html>
