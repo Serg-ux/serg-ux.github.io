@@ -7,6 +7,58 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>UnderPass</h1><br/><p>Portscan TCP/UDP</p><p></p><p><strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n --stats-every=5s -Pn -oN underpass_scan 10.10.11.48</strong></p><p></p><p>	PORT   STATE SERVICE VERSION</p><p>	22/tcp open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.10 (Ubuntu Linux; protocol 2.0)</p><p>	| ssh-hostkey: </p><p>	|   256 48:b0:d2:c7:29:26:ae:3d:fb:b7:6b:0f:f5:4d:2a:ea (ECDSA)</p><p>	|_  256 cb:61:64:b8:1b:1b:b5:ba:b8:45:86:c5:16:bb:e2:a2 (ED25519)</p><p>	80/tcp open  http    Apache httpd 2.4.52 ((Ubuntu))</p><p>	|_http-server-header: Apache/2.4.52 (Ubuntu)</p><p>	| http-methods: </p><p>	|_  Supported Methods: GET POST OPTIONS HEAD</p><p>	|_http-title: Apache2 Ubuntu Default Page: It works</p><p>	Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel</p><p></p><p><strong>	UDP	</strong></p><p></p><p>	PORT    STATE SERVICE VERSION</p><p>	161/udp open  snmp    SNMPv1 server; net-snmp SNMPv3 server (public)</p><p>	Service Info: Host: UnDerPass.htb is the only daloradius server in the basin!</p><p></p><p><strong>snmpwalk -v2c -c public 10.10.11.48</strong></p><p></p><p><img src="images/181-1.png" alt="images/181-1.png" /></p><p></p><p><strong>gobuster --wordlist=/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt dir -u </strong><strong><a href="http://underpass.htb/daloradius/">http://underpass.htb/daloradius/</a></strong></p><p></p><p><a href="http://underpass.htb/daloradius/app/operators/login.php">http://underpass.htb/daloradius/app/operators/login.php</a></p><p></p><p><img src="images/181-2.png" alt="images/181-2.png" /></p><p></p><p>Default creds vuln</p><p></p><p><img src="images/181-3.png" alt="images/181-3.png" /></p><p></p><p>I found a md5 hash</p><p></p><p><img src="images/181-4.png" alt="images/181-4.png" /></p><p></p><p><img src="images/181-5.png" alt="images/181-5.png" /></p><p></p><p><img src="images/181-6.png" alt="images/181-6.png" /></p><p></p><p>Enter as a user</p><p></p><p><img src="images/181-7.png" alt="images/181-7.png" /></p><p></p><p>Command that can be executed as admin</p><p></p><p><img src="images/181-8.png" alt="images/181-8.png" /></p><p></p><p><img src="images/181-9.png" alt="images/181-9.png" /></p><p></p><p>I start the program with debugger activated</p><p></p><p><img src="images/181-10.png" alt="images/181-10.png" /></p><p></p><p><img src="images/181-11.png" alt="images/181-11.png" /></p><p></p><p>Shell as root</p><p></p><p><img src="images/181-12.png" alt="images/181-12.png" /></p><p></p><p></p><p></p></div>
+<div class="page">
+
+<h1 class="title">UnderPass</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>The assessment started with a full TCP and UDP port scan to identify exposed services on the target machine.</p>
+<pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n --stats-every=5s -Pn -oN underpass_scan 10.10.11.48</code></pre>
+<p>The TCP scan revealed SSH running on port 22 and an Apache HTTP service on port 80.</p>
+<p>The UDP scan identified an SNMP service listening on port 161.</p>
+<p><img src="images/181-1.png" alt="images/181-1.png" /></p>
+</section>
+
+<section>
+<h2>Enumeration</h2>
+<p>Given the presence of SNMP with the public community string, further enumeration was performed using snmpwalk.</p>
+<pre><code>snmpwalk -v2c -c public 10.10.11.48</code></pre>
+<p>The SNMP output disclosed information indicating that the host was running a daloradius service.</p>
+<p>Web enumeration was then focused on the discovered application.</p>
+<pre><code>gobuster --wordlist=/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt dir -u http://underpass.htb/daloradius/</code></pre>
+<p>The enumeration revealed the daloradius web interface, including the operator login panel.</p>
+<p><a href="http://underpass.htb/daloradius/app/operators/login.php">http://underpass.htb/daloradius/app/operators/login.php</a></p>
+<p><img src="images/181-2.png" alt="images/181-2.png" /></p>
+<p>The application was found to be vulnerable to default credentials.</p>
+<p><img src="images/181-3.png" alt="images/181-3.png" /></p>
+<p>After authenticating, an MD5 hash was discovered within the application.</p>
+<p><img src="images/181-4.png" alt="images/181-4.png" /></p>
+<p><img src="images/181-5.png" alt="images/181-5.png" /></p>
+<p><img src="images/181-6.png" alt="images/181-6.png" /></p>
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>Using the recovered credentials, access was obtained as a standard user within the daloradius application.</p>
+<p><img src="images/181-7.png" alt="images/181-7.png" /></p>
+<p>While exploring the available functionality, a command was identified that could be executed with administrative privileges.</p>
+<p><img src="images/181-8.png" alt="images/181-8.png" /></p>
+<p><img src="images/181-9.png" alt="images/181-9.png" /></p>
+<p>The application allowed execution of a binary with debugging enabled.</p>
+<p>The program was started with the debugger activated, enabling further interaction at a privileged level.</p>
+<p><img src="images/181-10.png" alt="images/181-10.png" /></p>
+<p><img src="images/181-11.png" alt="images/181-11.png" /></p>
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>By leveraging the debugging capabilities of the executed program, command execution was achieved with root privileges.</p>
+<p>This resulted in a fully privileged root shell.</p>
+<p><img src="images/181-12.png" alt="images/181-12.png" /></p>
+</section>
+
+</div>
 </body>
+
 </html>
