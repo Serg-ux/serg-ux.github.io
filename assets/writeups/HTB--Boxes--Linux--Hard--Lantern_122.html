@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Lantern</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Lantern</h1>
+
+    <section>
+      <h2>Port Scanning</h2>
+      <p>
+        I start by scanning all ports to identify available services:
+      </p>
+      <div class="code-block">
+        <pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN lantern_scan 10.10.11.29</code></pre>
+      </div>
+      <p>
+        The scan redirects us to a web page:
+      </p>
+      <img src="images/122-1.png" alt="Lantern landing page">
+      <p>
+        I add the domain to <strong>/etc/hosts</strong>:
+      </p>
+      <div class="code-block">
+        <pre><code>nano /etc/hosts</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Initial Web Recon</h2>
+      <p>
+        At first glance, nothing interesting is visible. Subdomain enumeration fails. 
+        The server uses Blazor (.NET), so it may have DLL files.
+      </p>
+      <p>
+        A POST request exists at <strong>/vacancies</strong>, possibly vulnerable to SSRF. It only accepts PDFs.
+      </p>
+      <img src="images/122-2.png" alt="Vacancies POST request">
+    </section>
+
+    <section>
+      <h2>SSRF Exploitation</h2>
+      <p>
+        The server is vulnerable via <strong>X-Skipper-Proxy</strong>:
+      </p>
+      <p>
+        <a href="https://www.exploit-db.com/exploits/51111">X-Skipper-Proxy v0.13.237 - Server Side Request Forgery (SSRF)</a>
+      </p>
+      <p>
+        This allows reading local files on the server.
+      </p>
+      <img src="images/122-3.png" alt="Local file reading via SSRF">
+      <p>
+        Using Burp Suite, I intercept the GET request and modify it to perform SSRF.
+      </p>
+      <img src="images/122-4.png" alt="SSRF request interception">
+      <img src="images/122-5.png" alt="SSRF response">
+    </section>
+
+    <section>
+      <h2>Port Discovery via SSRF</h2>
+      <p>
+        I use FFUF to enumerate internal ports:
+      </p>
+      <div class="code-block">
+        <pre><code>ffuf -u http://lantern.htb/ -H "X-Skipper-Proxy: http://localhost:FUZZ" -w /usr/share/seclists/Discovery/Infrastructure/common-http-ports.txt</code></pre>
+      </div>
+      <img src="images/122-6.png" alt="FFUF internal port discovery">
+      <p>
+        I focus on port 5000 and continue exploiting internal services:
+      </p>
+      <img src="images/122-7.png" alt="Port 5000 via SSRF">
+      <img src="images/122-8.png" alt="Internal service 5000">
+    </section>
+
+    <section>
+      <h2>Finding Credentials in DLL</h2>
+      <p>
+        A script is discovered that references a .json containing credentials:
+      </p>
+      <img src="images/122-9.png" alt="Script found">
+      <img src="images/122-10.png" alt="Script URL access">
+      <p>
+        Redirecting the SSRF reveals multiple DLL files. The relevant file is <strong>InternaLantern.dll</strong>:
+      </p>
+      <img src="images/122-13.png" alt="DLL list">
+      <img src="images/122-14.png" alt="DLL of interest">
+      <p>
+        I download the DLL using the exact filename:
+      </p>
+      <img src="images/122-15.png" alt="DLL download request">
+      <img src="images/122-16.png" alt="DLL request exact name">
+      <p>
+        The file is saved locally:
+      </p>
+      <img src="images/122-17.png" alt="Downloaded DLL">
+      <p>
+        Using <strong>dotPeek</strong> (a .NET decompiler), I extract credentials encoded in Base64:
+      </p>
+      <img src="images/122-18.png" alt="dotPeek decompilation">
+      <p>
+        Decoding gives us the user and password:
+      </p>
+      <div class="code-block">
+        <pre><code>admin:AJbFA_Q@925p9ap#22</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Accessing Internal Application</h2>
+      <p>
+        These credentials are used to log into the panel on port 3000:
+      </p>
+      <img src="images/122-19.png" alt="Login with extracted credentials">
+      <p>
+        I explore file upload sections and local files through /PrivacyAndPolicy, which allows an LFI:
+      </p>
+      <img src="images/122-21.png" alt="LFI access">
+      <img src="images/122-22.png" alt="LFI GET request">
+      <img src="images/122-23.png" alt="LFI response">
+      <p>
+        This reveals the user <strong>tomas</strong>.
+      </p>
+      <img src="images/122-24.png" alt="User found">
+    </section>
+
+    <section>
+      <h2>File Upload & User SSH Key Extraction</h2>
+      <p>
+        Investigating file uploads, I find a vulnerable DLL module (FileUpload.dll) that allows writing files to /opt/components.
+      </p>
+      <img src="images/122-26.png" alt="FileUpload.dll vulnerability">
+      <p>
+        I create and modify a DLL to read <strong>tomas' id_rsa</strong>:
+      </p>
+      <div class="code-block">
+        <pre><code>str1 = new StreamReader((Stream) new MemoryStream(File.ReadAllBytes("/home/tomas/.ssh/id_rsa")), Encoding.UTF8, true).ReadToEnd();</code></pre>
+      </div>
+      <p>
+        Uploading and intercepting the request returns the SSH key. I connect via SSH:
+      </p>
+      <img src="images/122-29.png" alt="SSH connection">
+      <p>
+        I retrieve <strong>user.txt</strong>:
+      </p>
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        Running <strong>sudo -l</strong> shows a command that can be executed as root:
+      </p>
+      <img src="images/122-30.png" alt="sudo privileges">
+      <p>
+        Using <strong>ps aux | grep root</strong>, I identify running root processes:
+      </p>
+      <img src="images/122-31.png" alt="Root processes">
+      <p>
+        One process runs <strong>automation.sh</strong>. I monitor it with <strong>procmon</strong>:
+      </p>
+      <img src="images/122-32.png" alt="Procmon capture">
+      <img src="images/122-33.png" alt="Procmon running">
+      <p>
+        After stopping capture (CTRL+C), I find a SQLite database containing the root password:
+      </p>
+      <img src="images/122-35.png" alt="SQLite database">
+      <img src="images/122-36.png" alt="Transfer database locally">
+      <p>
+        Using this password, I log in as root and obtain <strong>root.txt</strong>.
+      </p>
+    </section>
+
+  </div>
+</body>
+
+</html>

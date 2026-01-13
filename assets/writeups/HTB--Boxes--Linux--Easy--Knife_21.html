@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Knife</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Knife</h1>
+
+    <section>
+      <h2>Initial Reconnaissance</h2>
+      <p>
+        I start by performing a port scan against the target machine to
+        identify exposed services.
+      </p>
+
+      <p>
+        The scan reveals that the SSH and HTTP services are running.
+        Since SSH is generally well secured, I decide to focus my
+        attack on the web service.
+      </p>
+
+      <p>
+        I add the target IP address to my <code>/etc/hosts</code> file
+        to avoid any resolution issues.
+      </p>
+    </section>
+
+    <section>
+      <h2>Web Analysis</h2>
+      <p>
+        I inspect the website source code looking for potential clues,
+        but nothing interesting is immediately visible.
+      </p>
+
+      <p>
+        To gather more information, I intercept the HTTP traffic using
+        Burp Suite to analyze the server responses.
+      </p>
+
+      <p>
+        The same inspection can be done using a simple HTTP request with
+        curl.
+      </p>
+
+      <div class="code-block">
+        <pre><code>curl -X OPTIONS http://10.10.10.242 -i</code></pre>
+      </div>
+
+      <p>
+        The response reveals that the server is running
+        <strong>PHP/8.1.0-dev</strong>, which immediately stands out as a
+        potentially vulnerable development version.
+      </p>
+    </section>
+
+    <section>
+      <h2>Remote Code Execution</h2>
+      <p>
+        I search for public exploits targeting this PHP version and find
+        a known <strong>Remote Code Execution</strong> vulnerability.
+      </p>
+
+      <img src="images/21-1.png" alt="Searchsploit results">
+
+      <p>
+        I copy the exploit to my local directory and prepare it for
+        execution.
+      </p>
+
+      <img src="images/21-2.png" alt="Exploit copied locally">
+
+      <p>
+        After executing the exploit, I successfully access the system
+        through the backdoor.
+      </p>
+
+      <p>
+        The shell reveals that I am logged in as the user
+        <strong>james</strong>.
+      </p>
+
+      <img src="images/21-3.png" alt="User shell access">
+    </section>
+
+    <section>
+      <h2>User Access</h2>
+      <p>
+        Due to shell limitations, I am unable to freely navigate through
+        directories. However, I can still retrieve files by executing
+        commands directly.
+      </p>
+
+      <div class="code-block">
+        <pre><code>cat /home/james/user.txt</code></pre>
+      </div>
+
+      <p>
+        With the user flag obtained, I check which commands I can run
+        with elevated privileges.
+      </p>
+
+      <div class="code-block">
+        <pre><code>sudo -l</code></pre>
+      </div>
+
+      <p>
+        The output shows that the <strong>knife</strong> command can be
+        executed as root without requiring a password.
+      </p>
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        Since I cannot spawn a proper TTY session, I use a PHP-based
+        execution method through the knife command.
+      </p>
+
+      <p>
+        By abusing knife’s execution feature, I run a command as root
+        and read the root flag.
+      </p>
+
+      <div class="code-block">
+        <pre><code>sudo knife exec -E 'system("cat /root/root.txt")'</code></pre>
+      </div>
+
+      <img src="images/21-4.png" alt="Root flag obtained">
+    </section>
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Cap</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Cap</h1>
+
+    <section>
+      <h2>Port Scanning and Enumeration</h2>
+      <p>
+        I begin by running a full port scan against the target machine in
+        order to identify any exposed services.
+      </p>
+
+      <div class="code-block">
+        <pre><code>nmap -Pn -sV -sC -p- --open 10.10.10.245 -oN scan.txt</code></pre>
+      </div>
+
+      <p>
+        The results show that the system is running HTTP, FTP, and SSH.
+        To ensure proper name resolution, I add the target IP address
+        to my local hosts file.
+      </p>
+
+      <div class="code-block">
+        <pre><code>nano /etc/hosts</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Dashboard Analysis</h2>
+      <p>
+        When accessing the host through a web browser, I am presented
+        with a dashboard interface. A <strong>Download</strong> button
+        is available, so I intercept its request using Burp Suite to
+        inspect how it works.
+      </p>
+
+      <p>
+        The response itself does not contain anything directly useful;
+        however, it downloads a <code>.pcap</code> file, which can be
+        analyzed further using Wireshark.
+      </p>
+
+      <img src="images/24-1.png" alt="PCAP file download">
+    </section>
+
+    <section>
+      <h2>Traffic Analysis</h2>
+      <p>
+        I open the downloaded PCAP file in Wireshark and analyze the
+        captured network traffic. During this process, I discover
+        cleartext credentials belonging to a valid user.
+      </p>
+
+      <img src="images/24-2.png" alt="Credentials in Wireshark">
+    </section>
+
+    <section>
+      <h2>Initial Access</h2>
+      <p>
+        Using the recovered credentials, I log in via SSH as the user
+        <strong>nathan</strong> and successfully retrieve the
+        <code>user.txt</code> flag.
+      </p>
+
+      <p>
+        To search for potential privilege escalation paths, I upload
+        and execute <strong>LinPEAS</strong> on the target system,
+        saving the output for later analysis.
+      </p>
+
+      <div class="code-block">
+        <pre><code>./linpeas.sh > linpeas.txt</code></pre>
+      </div>
+
+      <img src="images/24-3.png" alt="LinPEAS output">
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        After reviewing the LinPEAS results, I identify a misconfigured
+        <strong>bind</strong> binary that can be abused to escalate
+        privileges.
+      </p>
+
+      <p>
+        I search for this binary on <strong>GTFOBins</strong> and find
+        a suitable command that allows me to escalate privileges to
+        the root user.
+      </p>
+
+      <div class="code-block">
+        <pre><code>python3.8 -c 'import os; os.setuid(0); os.system("/bin/bash")'</code></pre>
+      </div>
+
+      <p>
+        Executing this command spawns a root shell, granting full system
+        access and allowing me to retrieve the <code>root.txt</code> flag.
+      </p>
+
+      <img src="images/24-4.png" alt="Root flag">
+    </section>
+  </div>
+</body>
+
+</html>

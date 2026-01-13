@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Sense</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+<div class='page'><h1 class='title'>Sense</h1><br/><p>PortScan</p><p></p><p>	<strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n --stats-every=5s -Pn -oN sense_scan &lt;IP&gt;</strong></p><p></p><p>Ports Open</p><p></p><p>	80/tcp  open  http     lighttpd 1.4.35</p><p>	443/tcp open  ssl/http lighttpd 1.4.35</p><p></p><p>Login page founded</p><p></p><p><img src="images/138-1.png" alt="images/138-1.png" /></p><p></p><p>Pfsense Webserver</p><p></p><p>Probably XSS</p><p></p><p>I enumerate the directories trying to find sensitive info</p><p></p><p>	<strong>gobuster dir -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -u </strong><strong><a href="http://<IP>">http://&lt;IP&gt;</a></strong><strong> -b 301 -x txt,php,html</strong></p><p></p><p>Other very good options its use dirbuster</p><p></p><p>	<strong>dirbuster -u </strong><strong><a href="https://10.10.10.60">https://10.10.10.60</a></strong><strong> -t 20 -l /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -r sense-10.10.10.60/dirbuster_dir-med -e php,txt,html</strong></p><p></p><p>Paths</p><p></p><p><img src="images/138-2.png" alt="images/138-2.png" /></p><p></p><p>Creds found</p><p></p><p><img src="images/138-3.png" alt="images/138-3.png" /></p><p></p><p>With the creds I can access the dashboard</p><p>	</p><p>	<strong>rohit:pfsense</strong></p><p>	</p><p>We can try use a module of metasploit to access the machine</p><p></p><p>we can use this <strong>exploit/unix/http/pfsense_graph_injection_exec</strong> because we have access to graph</p><p></p><p>We obtain a Meterpreter session</p><p></p><p><img src="images/138-4.png" alt="images/138-4.png" /></p><p></p><p>We can access to the user and the root flag</p></div>
+</body>
+</html>

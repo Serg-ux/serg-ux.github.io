@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Blocky</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Blocky</h1>
+
+    <section>
+      <h2>Initial Enumeration</h2>
+      <p>
+        I start by performing a full port scan against the target machine
+        to identify exposed services.
+      </p>
+
+      <div class="code-block">
+        <pre><code>nmap 10.10.10.37 -Pn -sC -sV -p- --open -T4</code></pre>
+      </div>
+
+      <p>
+        The scan reveals three services: <strong>FTP</strong>, <strong>SSH</strong>,
+        and <strong>HTTP</strong>.
+        I add the target IP address to <code>/etc/hosts</code> for proper hostname resolution.
+      </p>
+
+      <p>
+        To gather more information about the web service, I run
+        <strong>WhatWeb</strong>.
+        The results indicate that the server is running <strong>Apache</strong>
+        and <strong>WordPress</strong>.
+      </p>
+
+      <img src="images/81-1.png" alt="WhatWeb results">
+      <img src="images/81-2.png" alt="WordPress detected">
+    </section>
+
+    <section>
+      <h2>Web Enumeration</h2>
+      <p>
+        I proceed with directory enumeration in search of potential login
+        pages or attack vectors.
+      </p>
+
+      <img src="images/81-3.png" alt="Directory enumeration">
+
+      <p>
+        While browsing several discovered paths, I encounter a hint that
+        suggests further investigation.
+      </p>
+
+      <img src="images/81-4.png" alt="Hint discovered">
+
+      <p>
+        I identify login pages for both <strong>phpMyAdmin</strong> and
+        <strong>WordPress</strong>, but I do not yet have valid credentials.
+      </p>
+
+      <img src="images/81-5.png" alt="phpMyAdmin login">
+      <img src="images/81-6.png" alt="WordPress login">
+    </section>
+
+    <section>
+      <h2>Credential Discovery</h2>
+      <p>
+        While exploring the <code>/plugins</code> directory under
+        <code>blocky.htb</code>, I find two files that appear to be used
+        to store database-related information.
+      </p>
+
+      <p>
+        I decompile the <code>.jar</code> file using <strong>JD-GUI</strong>
+        and successfully recover hardcoded credentials.
+      </p>
+
+      <img src="images/81-7.png" alt="Decompiled JAR credentials">
+
+      <p>
+        Using these credentials, I log into <strong>phpMyAdmin</strong>
+        and gain access to the database dashboard.
+      </p>
+
+      <img src="images/81-8.png" alt="phpMyAdmin access">
+    </section>
+
+    <section>
+      <h2>WordPress Exploitation</h2>
+      <p>
+        Running <strong>WPScan</strong> reveals several directories
+        and potential attack vectors.
+      </p>
+
+      <img src="images/81-9.png" alt="WPScan results">
+      <img src="images/81-10.png" alt="WPScan findings">
+
+      <p>
+        Inside the phpMyAdmin panel, I find credentials for the
+        <strong>Notch</strong> user.
+      </p>
+
+      <img src="images/81-11.png" alt="Notch credentials">
+
+      <p>
+        After changing the password, I successfully log into the
+        WordPress administrative panel.
+      </p>
+
+      <img src="images/81-12.png" alt="WordPress admin access">
+
+      <p>
+        WPScan also highlights the <strong>TwentySeventeen</strong> theme
+        as a possible attack vector.
+        Since the theme uses PHP files, I upload a PHP reverse shell
+        based on the <strong>pentestmonkey</strong> payload.
+      </p>
+
+      <img src="images/81-14.png" alt="Reverse shell via theme">
+
+      <p>
+        Executing the malicious file grants me a reverse shell,
+        allowing me to retrieve the <code>user.txt</code> flag.
+      </p>
+
+      <img src="images/81-15.png" alt="User flag">
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        Due to the limited shell, I am unable to switch directly
+        to the <strong>Notch</strong> user.
+        However, I use the root password previously obtained from
+        the decompiled JAR file to authenticate via <strong>SSH</strong>.
+      </p>
+
+      <img src="images/81-16.png" alt="SSH access">
+
+      <p>
+        To escalate privileges, I check which commands I can run
+        as root using <code>sudo -l</code>.
+      </p>
+
+      <img src="images/81-17.png" alt="sudo privileges">
+
+      <p>
+        The output shows that I can execute all commands without
+        providing a password.
+        Running <code>sudo su</code> grants me full root access,
+        allowing me to retrieve the <code>root.txt</code> flag.
+      </p>
+
+      <img src="images/81-18.png" alt="Root flag">
+    </section>
+  </div>
+</body>
+
+</html>

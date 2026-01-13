@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Mirai</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Mirai</h1>
+
+    <section>
+      <h2>Port Scanning</h2>
+      <p>
+        I start by performing a full port scan to discover which services are running.
+      </p>
+      <div class="code-block">
+        <pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n --stats-every=5s -Pn -oN mirai_scan &lt;IP&gt;</code></pre>
+      </div>
+      <p>Services discovered include:</p>
+      <ul>
+        <li>22 &nbsp;&nbsp; ssh &nbsp;&nbsp; OpenSSH 6.7p1 Debian 5+deb8u3 (protocol 2.0)</li>
+        <li>53 &nbsp;&nbsp; domain &nbsp;&nbsp; dnsmasq 2.76</li>
+        <li>80 &nbsp;&nbsp; http &nbsp;&nbsp; lighttpd 1.4.35</li>
+        <li>1456 &nbsp;&nbsp; upnp &nbsp;&nbsp; Platinum UPnP 1.0.5.13</li>
+        <li>32400 &nbsp;&nbsp; http &nbsp;&nbsp; Plex Media Server httpd</li>
+        <li>32469 &nbsp;&nbsp; upnp &nbsp;&nbsp; Platinum UPnP 1.0.5.13</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Plex Media Server Analysis</h2>
+      <p>
+        On port 32400, I find a login page for Plex. I try to register a new account, but I receive a warning indicating that registration is disabled.
+      </p>
+      <img src="images/135-1.png" alt="Plex login page">
+      <img src="images/135-2.png" alt="Registration disabled warning">
+    </section>
+
+    <section>
+      <h2>HTTP Service Investigation</h2>
+      <p>
+        Port 80 returns a blank page. I analyze the response with Burp Suite and notice the header <strong>X-Pi-Hole</strong>.
+      </p>
+      <p>
+        Pi-hole is a <a href="https://en.wikipedia.org/wiki/DNS_Sinkhole">DNS sinkhole</a> that protects devices from unwanted content without client-side software.
+      </p>
+      <p>
+        The default route to the admin dashboard is <strong>/admin</strong>, where I can log in using the default credentials:
+      </p>
+      <div class="code-block">
+        <pre><code>pi:raspberry</code></pre>
+      </div>
+      <p>
+        I reuse the same credentials for SSH and obtain a shell as the user <strong>pi</strong>.
+      </p>
+      <img src="images/135-5.png" alt="User shell access">
+    </section>
+
+    <section>
+      <h2>Privilege Escalation & Sudo</h2>
+      <p>
+        I run <strong>sudo -l</strong> to see which commands I can execute as root. There are some interesting possibilities.
+      </p>
+      <img src="images/135-6.png" alt="Sudo privileges">
+    </section>
+
+    <section>
+      <h2>USB Forensics</h2>
+      <p>
+        I check connected devices with <strong>lsblk</strong> and discover a USB stick mounted at <strong>/media/usbstick</strong>.
+      </p>
+      <img src="images/135-7.png" alt="lsblk output">
+      <p>
+        Inside the USB stick, I find an important archive that needs forensic analysis.
+      </p>
+      <img src="images/135-8.png" alt="Important archive on USB stick">
+      <p>
+        I create a disk image of the USB stick using <strong>dcfldd</strong> to preserve integrity:
+      </p>
+      <div class="code-block">
+        <pre><code>dcfldd if=/dev/sdb of=/tmp/usb.dd hash=md5,sha1 hashlog=/tmp/hashlog.txt</code></pre>
+      </div>
+      <img src="images/135-9.png" alt="dcfldd hash generation">
+      <p>
+        I verify the image by comparing the hashes:
+      </p>
+      <div class="code-block">
+        <pre><code>dcfldd if=/dev/sdb vf=/tmp/usb.dd verifylog=/tmp/verifylog.txt</code></pre>
+      </div>
+      <img src="images/135-10.png" alt="Hash verification">
+      <img src="images/135-11.png" alt="Exfiltrating image to local machine">
+      <img src="images/135-12.png" alt="USB image ready for forensic tools">
+    </section>
+
+    <section>
+      <h2>File Extraction & Root Flag</h2>
+      <p>
+        Using <strong>fls</strong>, I list all files and directories in the disk image. I can identify the <strong>root.txt</strong> flag.
+      </p>
+      <p>
+        I use the <strong>strings</strong> command to extract sequences of printable characters from the image, which helps in analyzing potential hidden content.
+      </p>
+      <img src="images/135-13.png" alt="Strings command output with root.txt">
+    </section>
+  </div>
+</body>
+
+</html>

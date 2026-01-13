@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Broker</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Broker</h1>
+
+    <section>
+      <h2>Initial Setup & Enumeration</h2>
+      <p>
+        I begin by adding the target IP address to my local hosts file
+        to ensure proper name resolution.
+      </p>
+
+      <div class="code-block">
+        <pre><code>nano /etc/hosts</code></pre>
+      </div>
+
+      <p>
+        Next, I perform a full port scan to identify open services
+        running on the target host.
+      </p>
+
+      <div class="code-block">
+        <pre><code>nmap -Pn -sV -sC -p- --open 10.10.11.243 -oN scan.txt</code></pre>
+      </div>
+
+      <p>
+        The scan reveals an exposed <strong>Apache ActiveMQ</strong> service.
+        This immediately stands out as a potential attack vector.
+      </p>
+
+      <p>
+        Further research confirms that the service is vulnerable to
+        <strong>CVE-2023-46604</strong>, which can be exploited to achieve
+        <strong>Remote Code Execution (RCE)</strong>.
+      </p>
+
+      <img src="images/11-1.png" alt="ActiveMQ vulnerability">
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        After gaining initial access, I check which commands I am allowed
+        to execute with elevated privileges.
+      </p>
+
+      <div class="code-block">
+        <pre><code>sudo -l</code></pre>
+      </div>
+
+      <p>
+        The output shows that I can execute <strong>nginx</strong> as
+        the <strong>root</strong> user.
+        This allows me to start a web server with full privileges.
+      </p>
+
+      <p>
+        I copy the default <code>nginx.conf</code> file and place it inside
+        the <code>/tmp</code> directory, modifying it as needed.
+      </p>
+
+      <p>
+        I then start the Nginx service using the custom configuration file:
+      </p>
+
+      <div class="code-block">
+        <pre><code>sudo nginx -c /tmp/pwnd.conf</code></pre>
+      </div>
+
+      <p>
+        With the server running as root, I can directly request sensitive
+        files hosted locally. I use <code>curl</code> to retrieve the
+        root flag.
+      </p>
+
+      <div class="code-block">
+        <pre><code>curl 127.0.0.1:9001/root.txt</code></pre>
+      </div>
+
+      <p>
+        This successfully returns the contents of <code>root.txt</code>,
+        completing the privilege escalation.
+      </p>
+    </section>
+  </div>
+</body>
+
+</html>

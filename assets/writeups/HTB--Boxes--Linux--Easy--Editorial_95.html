@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Editorial</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Editorial</h1>
+
+    <section>
+      <h2>Initial Enumeration</h2>
+      <p>
+        I begin by performing a port scan against the target machine to
+        identify exposed services. The scan reveals that ports 21 (SSH)
+        and 80 (HTTP) are open.
+      </p>
+
+      <p>
+        To ensure proper name resolution, I add the target domain to my
+        local <code>/etc/hosts</code> file.
+      </p>
+    </section>
+
+    <section>
+      <h2>Web Application Analysis</h2>
+      <p>
+        While exploring the web application, I notice a section called
+        <strong>“Publish with us”</strong>, which immediately stands out
+        as a potential attack vector.
+      </p>
+
+      <img src="images/95-1.png" alt="Publish with us section">
+
+      <p>
+        This section allows file uploads and contains multiple text
+        input fields, increasing its attack surface.
+      </p>
+
+      <img src="images/95-2.png" alt="File upload functionality">
+
+      <p>
+        To identify additional attack vectors, I perform both directory
+        and DNS enumeration in search of hidden endpoints or login panels.
+        During this process, I confirm the presence of the same upload
+        endpoint discovered earlier.
+      </p>
+
+      <img src="images/95-3.png" alt="Upload endpoint">
+    </section>
+
+    <section>
+      <h2>SSRF Discovery</h2>
+      <p>
+        To better understand how the server processes requests, I
+        intercept the traffic using Burp Suite and analyze the server’s
+        responses.
+      </p>
+
+      <p>
+        The <strong>Book Information</strong> feature appears to make
+        internal requests on the server side, suggesting a potential
+        <strong>SSRF (Server-Side Request Forgery)</strong> vulnerability.
+      </p>
+
+      <img src="images/95-4.png" alt="SSRF testing">
+
+      <p>
+        Since the application fetches data from a URL, it may be possible
+        to manipulate this request and force the server to make requests
+        to arbitrary internal resources.
+      </p>
+
+      <img src="images/95-5.png" alt="SSRF payload">
+      <img src="images/95-6.png" alt="SSRF response">
+
+      <p>
+        In order for the request to be executed, I need to click the
+        <strong>Preview</strong> button.
+      </p>
+
+      <p>
+        By supplying <code>localhost</code> and a vulnerable internal
+        port in the URL, the server returns an internal response.
+      </p>
+
+      <img src="images/95-7.png" alt="Localhost SSRF response">
+    </section>
+
+    <section>
+      <h2>Internal API Enumeration</h2>
+      <p>
+        I send a <strong>GET</strong> request to the discovered internal
+        endpoint, which returns a response revealing several internal
+        API routes.
+      </p>
+
+      <img src="images/95-8.png" alt="Internal API endpoints">
+
+      <p>
+        Among the available endpoints, the <strong>authors</strong>
+        endpoint looks particularly interesting.
+      </p>
+
+      <p>
+        Querying this endpoint returns valid credentials for a user.
+      </p>
+
+      <img src="images/95-9.png" alt="Credentials leak">
+      <img src="images/95-10.png" alt="Credentials response">
+      <img src="images/95-11.png" alt="User details">
+    </section>
+
+    <section>
+      <h2>Initial Access</h2>
+      <p>
+        Using the leaked credentials, I log in via <strong>SSH</strong>
+        and successfully retrieve the <code>user.txt</code> flag.
+      </p>
+
+      <img src="images/95-12.png" alt="User flag">
+    </section>
+
+    <section>
+      <h2>Post-Exploitation and Git Analysis</h2>
+      <p>
+        While exploring the filesystem, I discover a hidden
+        <code>.git</code> directory inside the <code>apps</code> folder,
+        which may contain sensitive information.
+      </p>
+
+      <img src="images/95-13.png" alt="Git directory">
+
+      <p>
+        Inspecting the Git logs reveals multiple commits. One commit in
+        particular stands out:
+      </p>
+
+      <div class="code-block">
+        <pre><code>1e84a036b2f33c59e2390730699a488c65643d28</code></pre>
+      </div>
+
+      <p>
+        Reviewing this commit exposes another user named
+        <strong>prod</strong>, along with valid credentials.
+      </p>
+
+      <img src="images/95-14.png" alt="Prod credentials">
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        After switching to the <strong>prod</strong> user, I discover that
+        I am allowed to execute a specific command as the root user.
+      </p>
+
+      <img src="images/95-15.png" alt="Sudo permissions">
+
+      <p>
+        I analyze the script being executed and observe that it relies on
+        a library used for cloning repositories.
+      </p>
+
+      <img src="images/95-16.png" alt="Vulnerable library">
+
+      <p>
+        This library is vulnerable to
+        <strong>Remote Code Execution</strong>, identified as
+        <strong>CVE-2022-24439</strong>.
+      </p>
+
+      <p>
+        By exploiting this vulnerability, I am able to execute commands
+        as root and retrieve the contents of the <code>root.txt</code>
+        file.
+      </p>
+
+      <img src="images/95-17.png" alt="Root flag">
+    </section>
+  </div>
+</body>
+</html>

