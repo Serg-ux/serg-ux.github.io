@@ -7,6 +7,101 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Forest</h1><br/><p>Portscan</p><p></p><p><img src="images/200-1.png" alt="images/200-1.png" /></p><p></p><p>I will enumerate ldap with the domain htb.local</p><p></p><p>	<strong>ldapsearch -x -H &#39;ldap://10.10.10.161&#39; -b&quot;dc=htb,dc=local&quot;</strong></p><p></p><p>A Domain Controller is a server responsible for managing network and identity security requests.</p><p></p><p>	<strong>ldapsearch -x -H &#39;ldap://10.10.10.161&#39; -b&quot;dc=htb,dc=local&quot; | grep &quot;svc-&quot;</strong></p><p>	</p><p><img src="images/200-2.png" alt="images/200-2.png" /></p><p></p><p>A service account used to run the services related to the platform.</p><p></p><p>request a TGT ticket and dump the hash.</p><p></p><p><img src="images/200-3.png" alt="images/200-3.png" /></p><p></p><p>With John we crack the hash</p><p></p><p><img src="images/200-4.png" alt="images/200-4.png" /></p><p></p><p>Port 5985 its open, so maybe we can connect remotly throught WINRM</p><p></p><p>I can connect as alfresco user and find the user.flag</p><p></p><p><img src="images/200-5.png" alt="images/200-5.png" /></p><p></p><p>For privilege scalation i will use bloodhound to visualize the domain and find a posible privilege scalation</p><p></p><p>	<strong>bloodhound-python -d htb.local -u &#39;svc-alfresco&#39; -p &#39;s3rvice&#39; -gc forest.htb.local -c all --zip -ns 10.10.10.161</strong></p><p>	</p><p><img src="images/200-6.png" alt="images/200-6.png" /></p><p></p><p>With BloodHound GUI i can see that alfresco is member of 9 groups</p><p></p><p><img src="images/200-7.png" alt="images/200-7.png" /></p><p></p><p>One of the paths shows that the Exchange Windows Permissions group has WriteDaclprivileges on the Domain. The WriteDACL privilege gives a user the ability to add ACLs to an object.</p><p></p><p><img src="images/200-8.png" alt="images/200-8.png" /></p><p></p><p>Add a new user to Exchange Windows Permissions as well as the Remote Management Users group.</p><p></p><p><img src="images/200-9.png" alt="images/200-9.png" /></p><p></p><p>It works</p><p></p><p><img src="images/200-10.png" alt="images/200-10.png" /></p><p></p><p>Now we need to download the PowerView script and import it into the current session.</p><p></p><p>The Bypass-4MSI command is used to evade defender before importing the script. Next, we can use the Add-ObjectACL with john&#39;s credentials, and give him DCSync rights.</p><p></p><p><img src="images/200-11.png" alt="images/200-11.png" /></p><p></p><p>we can use the Add-ObjectACL with our creds, and give him DCSync rights</p><p></p><p>DSYNC (Data Synchronization) is a file operation that ensures file data is written out synchronously</p><p></p><p><img src="images/200-12.png" alt="images/200-12.png" /></p><p></p><p>Now My user sergux has DCSync permissions, so i can dump user hashes from de DC.</p><p></p><p><img src="images/200-13.png" alt="images/200-13.png" /></p><p></p><p><img src="images/200-14.png" alt="images/200-14.png" /></p><p></p><p>Now we can use this NTLM hash with crackmapexec to perform a Pass the hash attack</p><p></p><p><img src="images/200-15.png" alt="images/200-15.png" /></p><p></p><p>We can execute commands with crackmapexec too</p><p></p><p>	<strong>crackmapexec smb &lt;IP&gt; -u &#39;Administrator&#39; -H &#39;NTML_HASH&#39; -d &#39;htb.local&#39; -x &quot;type C:\Users\Administrator\Desktop\root.txt&quot;</strong></p><p>	</p></div>
+<div class="page">
+<h1 class="title">Forest</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>
+The assessment started with a port scan to identify exposed services on the target host, which was identified as a Domain Controller.
+</p>
+<img src="images/200-1.png" alt="images/200-1.png" />
+<p>
+Given the nature of the services, LDAP enumeration was performed against the htb.local domain to gather directory information.
+</p>
+<pre><code>ldapsearch -x -H 'ldap://10.10.10.161' -b "dc=htb,dc=local"</code></pre>
+<p>
+A Domain Controller is responsible for handling authentication, authorization, and directory services within an Active Directory environment.
+</p>
+<p>
+Filtering the LDAP output revealed the presence of service accounts.
+</p>
+<pre><code>ldapsearch -x -H 'ldap://10.10.10.161' -b "dc=htb,dc=local" | grep "svc-"</code></pre>
+<img src="images/200-2.png" alt="images/200-2.png" />
+<p>
+One of the identified accounts was a service account used to run platform-related services.
+</p>
+</section>
+
+<section>
+<h2>Enumeration / Analysis</h2>
+<p>
+A Ticket Granting Ticket (TGT) request was performed for the service account in order to retrieve its Kerberos hash.
+</p>
+<img src="images/200-3.png" alt="images/200-3.png" />
+<p>
+The extracted hash was then cracked offline using John the Ripper.
+</p>
+<img src="images/200-4.png" alt="images/200-4.png" />
+<p>
+With valid credentials obtained, it was observed that port 5985 was open, indicating that WinRM was available for remote connections.
+</p>
+<p>
+Using WinRM access, a remote session was established as the alfresco user, allowing access to the user flag.
+</p>
+<img src="images/200-5.png" alt="images/200-5.png" />
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>
+To identify potential privilege escalation paths within the domain, BloodHound was used to collect and visualize Active Directory relationships.
+</p>
+<pre><code>bloodhound-python -d htb.local -u 'svc-alfresco' -p 's3rvice' -gc forest.htb.local -c all --zip -ns 10.10.10.161</code></pre>
+<img src="images/200-6.png" alt="images/200-6.png" />
+<p>
+Analysis in the BloodHound GUI showed that the alfresco user was a member of multiple groups.
+</p>
+<img src="images/200-7.png" alt="images/200-7.png" />
+<p>
+One of the identified attack paths revealed that the Exchange Windows Permissions group had WriteDACL privileges over the domain. The WriteDACL permission allows modification of access control lists on domain objects.
+</p>
+<img src="images/200-8.png" alt="images/200-8.png" />
+<p>
+A new user was added to the Exchange Windows Permissions group as well as the Remote Management Users group to extend privileges.
+</p>
+<img src="images/200-9.png" alt="images/200-9.png" />
+<p>
+The changes were successfully applied.
+</p>
+<img src="images/200-10.png" alt="images/200-10.png" />
+<p>
+Next, the PowerView script was downloaded and imported into the current PowerShell session. Before importing, the Bypass-4MSI command was used to evade Windows Defender protections.
+</p>
+<p>
+Using Add-ObjectACL with the obtained credentials, DCSync rights were granted to the controlled user.
+</p>
+<img src="images/200-11.png" alt="images/200-11.png" />
+<p>
+DCSync is a technique that abuses directory replication permissions to extract password hashes directly from the Domain Controller.
+</p>
+<img src="images/200-12.png" alt="images/200-12.png" />
+<p>
+At this stage, the user sergux had DCSync permissions, allowing the extraction of domain user hashes from the Domain Controller.
+</p>
+<img src="images/200-13.png" alt="images/200-13.png" />
+<img src="images/200-14.png" alt="images/200-14.png" />
+<p>
+The recovered NTLM hash for the Administrator account was then used to perform a Pass-the-Hash attack with crackmapexec.
+</p>
+<img src="images/200-15.png" alt="images/200-15.png" />
+<p>
+Command execution was also possible using crackmapexec, allowing direct access to the root flag.
+</p>
+<pre><code>crackmapexec smb &lt;IP&gt; -u 'Administrator' -H 'NTML_HASH' -d 'htb.local' -x "type C:\Users\Administrator\Desktop\root.txt"</code></pre>
+</section>
+
+</div>
 </body>
+
 </html>
