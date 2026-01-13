@@ -7,6 +7,83 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Wifinetic</h1><br/><p><ol><li>Realizo un escaneo de todos los puertos activos</br><strong> nmap 10.10.11.247 -Pn -sV -sC -p- --open -oN scan.txt</strong></li><li>Encuentro los servicios FTP y SSH</li><li>Con el parámetro -sC a través de ftp-anon encuentra una serie de archivos</li><li>Accedo con el usuario anonymous </br><strong>ftp 10.10.11.247</strong></li><li>Cambio la carpeta local donde quiero que se descarguen los archivos que voy a coger  <strong>   ftp&gt; lcd /home/sergux/Desktop/htb/boxes/wifinetic/</strong></li><li>Voy descartanto los archivos basura de los importantes</li><li>Encuentro un par de de correos y un numero de telefono</li><li>Descomprimo el arhivo backup-OpenWrt-2023-07-26.tar </br><strong>tar -xf backup-OpenWrt-2023-07-26.tar</strong></li><li>Encuentro un archivo passwd</li><li>Después de hacer un Foothold encuentro los usuarios existentes</li><li>En la carpeta config se encuentra el archivo wireless que contiene una contraseña</li></ol></p><p>  <img src="images/12-1.png" alt="images/12-1.png" /><ol><li> Pruebo a entrar a través de ssh al ordenador conel usuario netadmin </br><strong>ssh netadmin@10.10.11.247</strong></li><li>Consigo una conexion</li></ol></p><p>  <img src="images/12-2.png" alt="images/12-2.png" /><ol><li>Y encuentrio la flag del usuario</li><li>Pruebo con un <strong>sudo -l</strong> para ver si tiene missconfiguations pero no</li><li>Enumero las redes </br><strong>ifconfig</strong></li><li>Encuentro varias interfaces wireless</li><li>Me dan a entender que la interfaz mon0 es una interfaz de monitoreo.</li><li>Enumero los servicios activos </br><strong>systemctl status</strong></li><li>El servicio wpa_supplicant me parece interesante</li></ol></p><p>  <img src="images/12-3.png" alt="images/12-3.png" /><ol><li>Enumero más información de este servicio  </br><strong>systemctl status wpa_supplicant.service</strong> </li></ol><img src="images/12-4.png" alt="images/12-4.png" /><ol><li>No tengo permiso para acceder a wpa_supplicant.conf</li><li>Veo información relevante de los interfaces wireless</br><strong> iwconfig</strong></li></ol></p><p>  <img src="images/12-5.png" alt="images/12-5.png" /><ol><li>Wlan1 tiene un punto de acceso y nos da el BSSID.</li><li>BSSID significa Basic Service Set Identifier. Es una dirección MAC para poder conectarnos a esa red wireless.</li><li>Ahora lo único que necesito es una herramienta instalada en la máquina atacada para poder interactuar con esta red wireless.</li><li>Listo las apps instaladas </br><strong>apt list --installed</strong></li><li>Después de buscar encuentro la herramienta reaver</li></ol></p><p>  <img src="images/12-6.png" alt="images/12-6.png" /><ol><li>Como nunca use esta herramienta tuve que usar --help</li><li>Lo lanzo a wlan1 pero da error</li><li>Introduzco el comando de reaver con el BSSID </br><strong>reaver -i mon0 -b 02:00:00:00:00:00 -vv</strong></li><li>Parece que encuentro una contraseña </li></ol><img src="images/12-7.png" alt="images/12-7.png" /><ol><li>Pruebo con <strong>su root</strong> y pongo la contraseña que obtuve </li></ol><img src="images/12-8.png" alt="images/12-8.png" /><ol><li>Obtengo la flag root.txt</li></ol></p><p align="center"></p></div>
+<div class="page">
+
+<h1 class="title">Wifinetic</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>The engagement began with a full port scan to identify all exposed services on the target system.</p>
+<pre><code>nmap 10.10.11.247 -Pn -sV -sC -p- --open -oN scan.txt</code></pre>
+<p>The scan revealed two available services: FTP and SSH.</p>
+<p>Thanks to the default scripts enabled with <code>-sC</code>, anonymous FTP access was detected, along with several downloadable files.</p>
+</section>
+
+<section>
+<h2>Enumeration</h2>
+<p>Access to the FTP service was obtained using the anonymous user.</p>
+<pre><code>ftp 10.10.11.247</code></pre>
+<p>The local download directory was changed to store the retrieved files.</p>
+<pre><code>ftp&gt; lcd /home/sergux/Desktop/htb/boxes/wifinetic/</code></pre>
+<p>After reviewing the available files, non-relevant data was discarded and only potentially useful artifacts were analyzed.</p>
+<p>Among the downloaded files, a couple of email addresses and a phone number were identified.</p>
+<p>The archive <code>backup-OpenWrt-2023-07-26.tar</code> was extracted for further inspection.</p>
+<pre><code>tar -xf backup-OpenWrt-2023-07-26.tar</code></pre>
+<p>Inside the extracted content, a <code>passwd</code> file was found, revealing information about existing users.</p>
+<p>Further analysis of the configuration files led to the discovery of the <code>wireless</code> file, which contained a plaintext password.</p>
+<p><img src="images/12-1.png" alt="images/12-1.png" /></p>
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>Using the recovered credentials, an SSH connection was attempted with the user <code>netadmin</code>.</p>
+<pre><code>ssh netadmin@10.10.11.247</code></pre>
+<p>The authentication was successful, providing a shell on the target system.</p>
+<p><img src="images/12-2.png" alt="images/12-2.png" /></p>
+<p>Once logged in, the user flag was located and retrieved.</p>
+</section>
+
+<section>
+<h2>Post-Exploitation Analysis</h2>
+<p>Privilege escalation opportunities were initially checked using <code>sudo -l</code>, but no direct misconfigurations were found.</p>
+<p>Network interfaces were enumerated to better understand the system’s environment.</p>
+<pre><code>ifconfig</code></pre>
+<p>Several wireless interfaces were identified, including <code>mon0</code>, which appeared to be configured in monitor mode.</p>
+<p>Active services were then reviewed.</p>
+<pre><code>systemctl status</code></pre>
+<p>Among the running services, <code>wpa_supplicant</code> stood out as particularly interesting.</p>
+<p><img src="images/12-3.png" alt="images/12-3.png" /></p>
+<p>Additional details about this service were gathered.</p>
+<pre><code>systemctl status wpa_supplicant.service</code></pre>
+<p><img src="images/12-4.png" alt="images/12-4.png" /></p>
+<p>Although direct access to <code>wpa_supplicant.conf</code> was not permitted, wireless interface information was still accessible.</p>
+<pre><code>iwconfig</code></pre>
+<p><img src="images/12-5.png" alt="images/12-5.png" /></p>
+<p>The interface <code>wlan1</code> was associated with an access point, and its BSSID was disclosed.</p>
+<p>The BSSID, or Basic Service Set Identifier, is the MAC address of the wireless access point and is required to interact with the network.</p>
+<p>To proceed, it was necessary to determine whether any wireless attack tools were installed on the system.</p>
+<p>A review of installed packages was performed.</p>
+<pre><code>apt list --installed</code></pre>
+<p>This revealed that the tool <code>reaver</code> was available on the machine.</p>
+<p><img src="images/12-6.png" alt="images/12-6.png" /></p>
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>Since reaver was unfamiliar, its usage information was consulted using the help option.</p>
+<p>An initial attempt to run it against <code>wlan1</code> failed.</p>
+<p>The attack was then launched correctly using the monitor interface <code>mon0</code> and the previously identified BSSID.</p>
+<pre><code>reaver -i mon0 -b 02:00:00:00:00:00 -vv</code></pre>
+<p>The tool successfully recovered a wireless password.</p>
+<p><img src="images/12-7.png" alt="images/12-7.png" /></p>
+<p>The obtained password was tested by switching to the root user.</p>
+<pre><code>su root</code></pre>
+<p><img src="images/12-8.png" alt="images/12-8.png" /></p>
+<p>The password was valid, granting root access.</p>
+<p>With full privileges obtained, the <code>root.txt</code> flag was accessed, completing the compromise.</p>
+</section>
+
+</div>
 </body>
+
 </html>
