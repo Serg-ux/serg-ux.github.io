@@ -7,6 +7,69 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Usage</h1><br/><p><ol><li>Realizo un escaneo de puertos </br><strong>nmap -sV -sC -p- --open 10.10.11.18 -oN scan.txt</strong></li><li>Encuentro el servicio <strong>SSH</strong> y <strong>HTTP</strong></li><li>Analizo la página y encuentro un login</li><li>arriba a la derecha hay un botón admin</li><li>si le doy click me redirige a al subdominio <strong>admin.usage.htb</strong></li><li>Los añado a <strong> /etc/hosts</strong></li><li>Me manda a un login de admin</li><li>Veo que no funcionan los credenciales ni nada</li><li>Al entrar en el directorio /forget-password si introduzco un email dice que no lo encontró en sus archivos</li><li>Por lo que parece que realiza una sentencia SQL</li><li>Voy a ver si con sqlmap puedo ver si es vulnerable a una SQLi</li><li>Con sqlmap no encuentro nada</li><li>Le doy una segunda oportunidad y me encuentra una sqli</li><li>Obtengo un una contraseña y un hash</li><li>Lo desencripto con hashcat </br><strong>hashcat -m 3200 hash /usr/share/wordlists/rockyou.txt</strong></li><li>Obtengo el usuario <strong>admin:whatever1</strong></li><li>Puedo entrar en <strong>/admin.usage.htb/</strong></li><li>Tras buscar la unica forma que encuentro para subir un archivo y entrar al server sería a través de cambiar la foto del usuario</li><li>Si no tiene las reglas bien puestas puedo subir un archivo PHP acabado en .jpg <strong>(CVE-2023-24249)</strong> </li></ol><img src="images/39-1.png" alt="images/39-1.png" /><ol><li>Hay que enviar el archivo como .jpg e intercepar el tráfico. En Burpsuite le ponemos .php y se bypasseará </li></ol><img src="images/39-2.png" alt="images/39-2.png" /><ol><li>Busco la ruta del script gracias al botón de download   </li><li>Obtengo un rev shell </li></ol><img src="images/39-3.png" alt="images/39-3.png" /><ol><li>Encuentro el usuario <strong>xander</strong></li><li>Tengo que pivotar a <strong>xander</strong> y de xander pivotar a root</li><li>Dentro del directorio home de dash hay varios archivos ocultos</li><li>Encuentro una pass en el archivo<strong> .monitrc</strong></li><li>Es una pass para un usuario local</li><li>Pruebo a entrar por SSH con esa pass y el usuario xander y consigo una conexión </li></ol><img src="images/39-4.png" alt="images/39-4.png" /><ol><li>Veo que comandos puedo ejecutar como root </li></ol><img src="images/39-5.png" alt="images/39-5.png" /><ol><li>Puedo ver lo que hace usage_management con cat</li><li>7zip esta funcionando en <strong>/var/www/html</strong> y devolviendo en<strong> /var/backups</strong></li><li>Accedoa la ruta <strong>/var/www/html</strong></li><li>Uso la <strong>Wildcard</strong> de <strong>7z</strong> </li></ol><img src="images/39-6.png" alt="images/39-6.png" /></p><p align="center"></p></div>
+<div class="page">
+
+<h1 class="title">Usage</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>The process started with a full TCP port scan to identify exposed services on the target host.</p>
+<pre><code>nmap -sV -sC -p- --open 10.10.11.18 -oN scan.txt</code></pre>
+<p>The scan revealed two open services: SSH and HTTP.</p>
+</section>
+
+<section>
+<h2>Enumeration</h2>
+<p>The web application was analyzed and a login page was identified.</p>
+<p>On the top-right corner of the page, an admin button was present. Clicking it redirected to the subdomain <strong>admin.usage.htb</strong>.</p>
+<p>Both the main domain and the admin subdomain were added to the <code>/etc/hosts</code> file.</p>
+<p>Accessing the admin subdomain displayed an administrative login page.</p>
+<p>Standard credentials did not work, so further testing was required.</p>
+<p>When interacting with the <code>/forget-password</code> endpoint, submitting an email address returned a message indicating it was not found, suggesting that the backend might be processing SQL queries.</p>
+<p>An initial SQL injection test using sqlmap did not return results.</p>
+<p>After running sqlmap again with adjusted parameters, a SQL injection vulnerability was successfully identified.</p>
+<p>As a result, a password hash was extracted.</p>
+<pre><code>hashcat -m 3200 hash /usr/share/wordlists/rockyou.txt</code></pre>
+<p>The hash was cracked, revealing valid credentials: <strong>admin:whatever1</strong>.</p>
+<p>Using these credentials, access to <code>http://admin.usage.htb/</code> was obtained.</p>
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>After reviewing the admin panel, the only available file upload functionality was found in the profile picture update feature.</p>
+<p>The upload mechanism appeared to have weak validation, allowing a PHP file disguised with a <code>.jpg</code> extension to be uploaded, corresponding to <strong>CVE-2023-24249</strong>.</p>
+<p><img src="images/39-1.png" alt="images/39-1.png" /></p>
+<p>The image file was initially uploaded with a <code>.jpg</code> extension, and the request was intercepted using Burp Suite.</p>
+<p>During interception, the file extension was modified from <code>.jpg</code> to <code>.php</code>, bypassing the file type restriction.</p>
+<p><img src="images/39-2.png" alt="images/39-2.png" /></p>
+<p>The upload path of the script was identified using the download functionality.</p>
+<p>Executing the uploaded PHP file resulted in a reverse shell on the target system.</p>
+<p><img src="images/39-3.png" alt="images/39-3.png" /></p>
+</section>
+
+<section>
+<h2>Post-Exploitation Analysis</h2>
+<p>Once inside the system, a user named <strong>xander</strong> was identified.</p>
+<p>The next objective was to pivot from the initial foothold to the <strong>xander</strong> user and then escalate privileges to root.</p>
+<p>While exploring the home directory of the user <strong>dash</strong>, several hidden files were discovered.</p>
+<p>One of these files, <code>.monitrc</code>, contained a plaintext password.</p>
+<p>This password corresponded to a local user account.</p>
+<p>Using these credentials, SSH access as the user <strong>xander</strong> was successfully established.</p>
+<p><img src="images/39-4.png" alt="images/39-4.png" /></p>
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>With access as <strong>xander</strong>, sudo privileges were enumerated to identify possible escalation paths.</p>
+<p><img src="images/39-5.png" alt="images/39-5.png" /></p>
+<p>The output showed that the <code>usage_management</code> script could be executed with elevated privileges.</p>
+<p>Inspecting the script revealed that it used <code>7zip</code> to archive files from <code>/var/www/html</code> and store the output in <code>/var/backups</code>.</p>
+<p>By navigating to <code>/var/www/html</code> and abusing the wildcard handling behavior of <code>7zip</code>, it was possible to manipulate the archive process.</p>
+<p>This wildcard abuse led to command execution with root privileges.</p>
+<p><img src="images/39-6.png" alt="images/39-6.png" /></p>
+</section>
+
+</div>
 </body>
+
 </html>
