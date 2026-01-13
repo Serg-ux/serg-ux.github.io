@@ -7,6 +7,46 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Photon Lockdown</h1><br/><p><ol><li>Hago un unzip de archivo y encuentro 3 archivos</li><li>Hago un cat a fwu_ver y encuentro la versión → 3.0.5</li><li>Hago un file rootfs y me devuelve esto → rootfs: Squashfs filesystem, little endian, version 4.0, zlib compressed.</li><li>Descomprimo el archivo con →  <strong>unsquashfs</strong> rootfs</li><li>Con el comando grep busco en todos los archivos txt,conf,xml,php que contenga HTB →<strong> grep --include=*.{txt,conf,xml,php} -rnw &#39;.&#39; -e &#39;HTB&#39; 2&gt;/dev/null</strong></li></ol></p><p align="center"></p></div>
+<div class="page">
+
+<h1 class="title">Photon Lockdown</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+
+<p>
+The analysis began by extracting the provided archive. After unzipping the file, three separate files were identified.
+</p>
+
+<p>
+I inspected the file named <code>fwu_ver</code> using <code>cat</code>, which revealed the firmware version in use.
+The version identified was <strong>3.0.5</strong>.
+</p>
+</section>
+
+<section>
+<h2>Enumeration / Analysis</h2>
+
+<p>
+Next, I analyzed the <code>rootfs</code> file to determine its format.
+Using the <code>file</code> command, it was identified as a SquashFS filesystem, little endian, version 4.0, compressed with zlib.
+</p>
+
+<p>
+Given this information, I proceeded to extract the filesystem using <strong>unsquashfs</strong>.
+</p>
+
+<pre><code>unsquashfs rootfs</code></pre>
+
+<p>
+Once the filesystem was extracted, I performed a recursive search across relevant file types to locate any references to the string <strong>HTB</strong>.
+This search was limited to text, configuration, XML, and PHP files.
+</p>
+
+<pre><code>grep --include=*.{txt,conf,xml,php} -rnw '.' -e 'HTB' 2>/dev/null</code></pre>
+
+</section>
+
+</div>
 </body>
 </html>
