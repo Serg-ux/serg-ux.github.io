@@ -7,6 +7,59 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Grandpa</h1><br/><p>Escaneo de puertos</p><p></p><p>	<strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN grandpa_scan &lt;IP&gt;</strong></p><p></p><p>Puerto 80 abierto (HTTP) versión <strong>Microsoft IIS httpd 6.0</strong></p><p></p><p>Buscando en searchsploit encuentro que tiene varias vulns</p><p></p><p><img src="images/132-1.png" alt="images/132-1.png" /></p><p></p><p>Msf tiene un módulo para vulnerar httpd que sería un Buffer Overflow remoto</p><p></p><p>Pruebo y obtengo una sesión de meterpreter</p><p></p><p><img src="images/132-2.png" alt="images/132-2.png" /></p><p></p><p>Esta el usuario Harry y el usuario Administrator pero no puedo acceder a ninguno de ellos</p><p></p><p>Como no se muy bien por donde tirar usare el modulo suggester para ver por donde hacer el privesc</p><p></p><p><img src="images/132-3.png" alt="images/132-3.png" /></p><p></p><p>Me da que estos exploits son válidos</p><p></p><p>Un buen truco en este punto sería migrar a un proceso del usuario<strong> NT AUTHORITY\NETWORK</strong></p><p></p><p><img src="images/132-4.png" alt="images/132-4.png" /></p><p></p><p>Uso el exploit <strong>exploit/windows/local/ms14_070_tcpip_ioctl </strong></p><p></p><p>Lo ejecuto y ahora soy Administrador</p><p></p><p><img src="images/132-5.png" alt="images/132-5.png" /></p></div>
+<div class="page">
+<h1 class="title">Grandpa</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>
+The engagement began with a full TCP port scan to identify exposed services on the target system.
+</p>
+<pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN grandpa_scan &lt;IP&gt;</code></pre>
+<p>
+The scan revealed that port 80 was open, running an HTTP service identified as Microsoft IIS httpd 6.0.
+</p>
+<p>
+Given the outdated version of IIS, a search was performed using searchsploit, which returned multiple known vulnerabilities affecting this service.
+</p>
+<img src="images/132-1.png" alt="images/132-1.png" />
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>
+Metasploit provides a module capable of exploiting Microsoft IIS 6.0 through a remote buffer overflow vulnerability. This module was selected and executed against the target.
+</p>
+<p>
+After successful exploitation, a Meterpreter session was obtained.
+</p>
+<img src="images/132-2.png" alt="images/132-2.png" />
+<p>
+Once access was established, local user enumeration showed the presence of the Harry and Administrator accounts. However, direct access to either account was not possible at this stage.
+</p>
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>
+Since there was no immediate privilege escalation path, the Metasploit local exploit suggester module was used to identify potential vulnerabilities that could be leveraged.
+</p>
+<img src="images/132-3.png" alt="images/132-3.png" />
+<p>
+The module reported several valid local exploits for the system. At this point, a useful technique was to migrate the Meterpreter session into a process running under the NT AUTHORITY\NETWORK SERVICE context.
+</p>
+<img src="images/132-4.png" alt="images/132-4.png" />
+<p>
+Based on the suggested options, the following local privilege escalation exploit was selected.
+</p>
+<pre><code>exploit/windows/local/ms14_070_tcpip_ioctl</code></pre>
+<p>
+After executing the exploit, the session was successfully elevated, granting administrative privileges on the target system.
+</p>
+<img src="images/132-5.png" alt="images/132-5.png" />
+</section>
+
+</div>
 </body>
+
 </html>
