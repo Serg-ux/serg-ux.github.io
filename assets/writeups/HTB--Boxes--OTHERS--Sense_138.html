@@ -7,6 +7,87 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Sense</h1><br/><p>PortScan</p><p></p><p>	<strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n --stats-every=5s -Pn -oN sense_scan &lt;IP&gt;</strong></p><p></p><p>Ports Open</p><p></p><p>	80/tcp  open  http     lighttpd 1.4.35</p><p>	443/tcp open  ssl/http lighttpd 1.4.35</p><p></p><p>Login page founded</p><p></p><p><img src="images/138-1.png" alt="images/138-1.png" /></p><p></p><p>Pfsense Webserver</p><p></p><p>Probably XSS</p><p></p><p>I enumerate the directories trying to find sensitive info</p><p></p><p>	<strong>gobuster dir -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -u </strong><strong><a href="http://<IP>">http://&lt;IP&gt;</a></strong><strong> -b 301 -x txt,php,html</strong></p><p></p><p>Other very good options its use dirbuster</p><p></p><p>	<strong>dirbuster -u </strong><strong><a href="https://10.10.10.60">https://10.10.10.60</a></strong><strong> -t 20 -l /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -r sense-10.10.10.60/dirbuster_dir-med -e php,txt,html</strong></p><p></p><p>Paths</p><p></p><p><img src="images/138-2.png" alt="images/138-2.png" /></p><p></p><p>Creds found</p><p></p><p><img src="images/138-3.png" alt="images/138-3.png" /></p><p></p><p>With the creds I can access the dashboard</p><p>	</p><p>	<strong>rohit:pfsense</strong></p><p>	</p><p>We can try use a module of metasploit to access the machine</p><p></p><p>we can use this <strong>exploit/unix/http/pfsense_graph_injection_exec</strong> because we have access to graph</p><p></p><p>We obtain a Meterpreter session</p><p></p><p><img src="images/138-4.png" alt="images/138-4.png" /></p><p></p><p>We can access to the user and the root flag</p></div>
+  <div class="page">
+    <h1 class="title">Sense</h1>
+
+    <section>
+      <h2>Reconnaissance</h2>
+      <p>
+        I start by performing a full TCP port scan against the target in order to identify exposed
+        services and gather version information.
+      </p>
+      <pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n --stats-every=5s -Pn -oN sense_scan &lt;IP&gt;</code></pre>
+      <p>
+        The scan reveals two open ports. Port 80 is running an HTTP service, and port 443 is running
+        HTTPS. Both services are hosted by <strong>lighttpd 1.4.35</strong>.
+      </p>
+      <p>
+        While browsing the web application, I immediately identify a login page exposed on the web server.
+      </p>
+      <img src="images/138-1.png" alt="images/138-1.png" />
+      <p>
+        Based on the interface and response headers, it becomes clear that the web application is a
+        <strong>pfSense</strong> firewall web interface.
+      </p>
+    </section>
+
+    <section>
+      <h2>Enumeration / Analysis</h2>
+      <p>
+        At first glance, the application might appear vulnerable to client-side issues such as XSS.
+        However, my focus shifts to directory enumeration in order to identify misconfigurations
+        or sensitive files exposed by the server.
+      </p>
+      <pre><code>gobuster dir -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -u http://&lt;IP&gt; -b 301 -x txt,php,html</code></pre>
+      <p>
+        As an alternative and more exhaustive approach, I also consider using DirBuster to enumerate
+        directories over HTTPS.
+      </p>
+      <pre><code>dirbuster -u https://10.10.10.60 -t 20 -l /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -r sense-10.10.10.60/dirbuster_dir-med -e php,txt,html</code></pre>
+      <p>
+        The enumeration process reveals several interesting paths, one of which exposes sensitive
+        information.
+      </p>
+      <img src="images/138-2.png" alt="images/138-2.png" />
+      <p>
+        Among the discovered files, I find credentials stored in plaintext.
+      </p>
+      <img src="images/138-3.png" alt="images/138-3.png" />
+      <p>
+        Using these credentials, I am able to authenticate successfully into the pfSense dashboard.
+      </p>
+      <pre><code>rohit:pfsense</code></pre>
+    </section>
+
+    <section>
+      <h2>Exploitation</h2>
+      <p>
+        With valid administrative access to the pfSense web interface, I look for known vulnerabilities
+        that can be leveraged for remote code execution.
+      </p>
+      <p>
+        Since I have access to the graphing functionality, I can abuse a known vulnerability using
+        a Metasploit module designed for pfSense.
+      </p>
+      <p>
+        The module <strong>exploit/unix/http/pfsense_graph_injection_exec</strong> is suitable in this scenario,
+        as it allows command injection through the graphing feature.
+      </p>
+      <p>
+        After launching the exploit, I successfully obtain a Meterpreter session on the target system.
+      </p>
+      <img src="images/138-4.png" alt="images/138-4.png" />
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        The Meterpreter session provides sufficient privileges to access both the user and root flags.
+        With full control over the system, the machine is successfully compromised.
+      </p>
+    </section>
+
+  </div>
 </body>
+
 </html>
