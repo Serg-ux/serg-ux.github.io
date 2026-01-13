@@ -7,6 +7,155 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Heal</h1><br/><p>Portscan</p><p></p><p><img src="images/182-1.png" alt="images/182-1.png" /></p><p></p><p>Subdomain Enumeration</p><p></p><p><strong>ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -u </strong><strong><a href="http://heal.htb">http://heal.htb</a></strong><strong> -H &quot;Host: FUZZ.heal.htb&quot; -fc 404 -mc 200 </strong></p><p></p><p><img src="images/182-2.png" alt="images/182-2.png" /></p><p></p><p><img src="images/182-3.png" alt="images/182-3.png" /></p><p></p><p>I access to the subdomain and i can see a version</p><p></p><p><img src="images/182-4.png" alt="images/182-4.png" /></p><p></p><p></p><p>Dir found</p><p></p><p><img src="images/182-5.png" alt="images/182-5.png" /></p><p></p><p><img src="images/182-6.png" alt="images/182-6.png" /></p><p></p><p><img src="images/182-7.png" alt="images/182-7.png" /></p><p></p><p><strong><a href="http://take-survey.heal.htb/">http://take-survey.heal.htb/</a></strong></p><p></p><p><img src="images/182-8.png" alt="images/182-8.png" /></p><p></p><p>On this subdomain there are a lot of dirs</p><p></p><p><img src="images/182-9.png" alt="images/182-9.png" /></p><p></p><p>I use dirseach to bruteforce directories and archieves</p><p></p><p><strong>dirsearch -u &quot;</strong><strong><a href="http://take-survey.heal.htb/index.php/">http://take-survey.heal.htb/index.php/</a></strong><strong>&quot; -t 50 -i 200</strong></p><p></p><p><img src="images/182-10.png" alt="images/182-10.png" /></p><p></p><p><strong><a href="http://take-survey.heal.htb/index.php/admin/authentication/sa/login">http://take-survey.heal.htb/index.php/admin/authentication/sa/login</a></strong></p><p></p><p><img src="images/182-11.png" alt="images/182-11.png" /></p><p></p><p></p><p>We can create a pdf (possible LFI)</p><p></p><p><img src="images/182-12.png" alt="images/182-12.png" /></p><p></p><p>I intercept the pdf export</p><p></p><p><img src="images/182-13.png" alt="images/182-13.png" /></p><p></p><p><img src="images/182-14.png" alt="images/182-14.png" /></p><p></p><p><img src="images/182-15.png" alt="images/182-15.png" /></p><p></p><p>I try to download the database.yml</p><p></p><p><img src="images/182-16.png" alt="images/182-16.png" /></p><p></p><p><img src="images/182-17.png" alt="images/182-17.png" /></p><p></p><p>I download the db and i can see ralph hash</p><p></p><p><img src="images/182-18.png" alt="images/182-18.png" /></p><p></p><p>I use hashcat and i get the pass for user ralph</p><p></p><p><strong>ralph:147258369</strong></p><p></p><p>I try this creds with ssh but didn&#39;t work so i tried on LimeSurvey and i access to ralph panel</p><p></p><p><img src="images/182-19.png" alt="images/182-19.png" /></p><p></p><p>This LimeSurvey its 6.6.4 version (vulnerable to RCE)</p><p></p><p><img src="images/182-20.png" alt="images/182-20.png" /></p><p></p><p>I zip the reverse.php and config.xml (with version 6.0)</p><p></p><p>I upload the zip and i activate it</p><p></p><p><img src="images/182-21.png" alt="images/182-21.png" /></p><p></p><p>I make a call for the reverse trought the URL</p><p></p><p>I get a shell with www-data user</p><p></p><p>on <strong>/var/www/limesurvey/application/config/config.php</strong> i can see creds for user ron</p><p></p><p><img src="images/182-22.png" alt="images/182-22.png" /></p><p></p><p>I use this creds for enter with ssh</p><p></p><p><strong>ron:AdmiDi0_pA$$w0rd</strong></p><p></p><p><img src="images/182-23.png" alt="images/182-23.png" /></p><p></p><p>I upload linpeas.sh to see posible privilege scalation vectors</p><p></p><p><img src="images/182-24.png" alt="images/182-24.png" /></p><p></p><p>I make a portforwarding for 8500 port</p><p></p><p><img src="images/182-25.png" alt="images/182-25.png" /></p><p></p><p>Open Services </p><p></p><p><img src="images/182-26.png" alt="images/182-26.png" /></p><p></p><p><img src="images/182-27.png" alt="images/182-27.png" /></p><p></p><p>I try to find vulns for HashiCorp 1.19.2</p><p></p><p><strong><a href="https://www.exploit-db.com/exploits/46074">https://www.exploit-db.com/exploits/46074</a></strong></p><p></p><p><img src="images/182-28.png" alt="images/182-28.png" /></p><p></p><p><img src="images/182-29.png" alt="images/182-29.png" /></p><p></p></div>
+<div class="page">
+<h1 class="title">Heal</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>
+I started the assessment by performing a port scan against the target in order to identify exposed services. The results indicated a web application as the main attack surface, so I focused my efforts on HTTP enumeration.
+</p>
+<img src="images/182-1.png" alt="images/182-1.png" />
+</section>
+
+<section>
+<h2>Enumeration / Analysis</h2>
+<p>
+The next step was subdomain enumeration to discover additional virtual hosts that could expose hidden functionality. I used ffuf with a common subdomain wordlist and fuzzed the Host header against the main domain.
+</p>
+<pre><code>ffuf -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -u http://heal.htb -H "Host: FUZZ.heal.htb" -fc 404 -mc 200</code></pre>
+<img src="images/182-2.png" alt="images/182-2.png" />
+<img src="images/182-3.png" alt="images/182-3.png" />
+
+<p>
+One of the discovered subdomains exposed a web application that revealed its version information, which was useful for identifying potential vulnerabilities.
+</p>
+<img src="images/182-4.png" alt="images/182-4.png" />
+
+<p>
+Further enumeration revealed multiple directories on another subdomain. This significantly increased the attack surface and warranted deeper directory brute-forcing.
+</p>
+<img src="images/182-5.png" alt="images/182-5.png" />
+<img src="images/182-6.png" alt="images/182-6.png" />
+<img src="images/182-7.png" alt="images/182-7.png" />
+
+<p>
+The following subdomain appeared to host a LimeSurvey instance:
+<a href="http://take-survey.heal.htb/">http://take-survey.heal.htb/</a>.
+</p>
+<img src="images/182-8.png" alt="images/182-8.png" />
+
+<p>
+This application exposed a large number of directories, so I used dirsearch to brute-force additional paths and files, including archived content.
+</p>
+<img src="images/182-9.png" alt="images/182-9.png" />
+<pre><code>dirsearch -u "http://take-survey.heal.htb/index.php/" -t 50 -i 200</code></pre>
+<img src="images/182-10.png" alt="images/182-10.png" />
+
+<p>
+The enumeration revealed an administrative login panel for LimeSurvey.
+</p>
+<p>
+<a href="http://take-survey.heal.htb/index.php/admin/authentication/sa/login">
+http://take-survey.heal.htb/index.php/admin/authentication/sa/login
+</a>
+</p>
+<img src="images/182-11.png" alt="images/182-11.png" />
+
+<p>
+While navigating the application, I noticed a feature that allowed exporting content to PDF, which suggested a potential Local File Inclusion vector.
+</p>
+<img src="images/182-12.png" alt="images/182-12.png" />
+
+<p>
+I intercepted the PDF export request to analyze how files were being fetched by the backend.
+</p>
+<img src="images/182-13.png" alt="images/182-13.png" />
+<img src="images/182-14.png" alt="images/182-14.png" />
+<img src="images/182-15.png" alt="images/182-15.png" />
+
+<p>
+By manipulating the request, I attempted to retrieve sensitive configuration files, starting with <code>database.yml</code>.
+</p>
+<img src="images/182-16.png" alt="images/182-16.png" />
+<img src="images/182-17.png" alt="images/182-17.png" />
+
+<p>
+The database file was successfully downloaded, revealing a password hash belonging to the user <code>ralph</code>.
+</p>
+<img src="images/182-18.png" alt="images/182-18.png" />
+
+<p>
+I cracked the hash using hashcat and recovered the following credentials:
+</p>
+<pre><code>ralph:147258369</code></pre>
+
+<p>
+These credentials did not work over SSH, but they were valid for the LimeSurvey application, granting access to Ralph’s administrative panel.
+</p>
+<img src="images/182-19.png" alt="images/182-19.png" />
+
+<p>
+The LimeSurvey instance was running version 6.6.4, which is known to be vulnerable to remote code execution.
+</p>
+<img src="images/182-20.png" alt="images/182-20.png" />
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>
+To exploit the vulnerability, I prepared a malicious plugin by zipping a <code>reverse.php</code> file together with a compatible <code>config.xml</code> from version 6.0. I uploaded the plugin through the LimeSurvey interface and activated it.
+</p>
+<img src="images/182-21.png" alt="images/182-21.png" />
+
+<p>
+After activation, I triggered the reverse shell by accessing the plugin through the corresponding URL. This resulted in a shell as the <code>www-data</code> user.
+</p>
+
+<p>
+While enumerating the system, I found database credentials inside the LimeSurvey configuration file located at:
+</p>
+<pre><code>/var/www/limesurvey/application/config/config.php</code></pre>
+<img src="images/182-22.png" alt="images/182-22.png" />
+
+<p>
+The credentials belonged to the user <code>ron</code>, which allowed me to authenticate over SSH.
+</p>
+<pre><code>ron:AdmiDi0_pA$$w0rd</code></pre>
+<img src="images/182-23.png" alt="images/182-23.png" />
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>
+Once logged in as Ron, I uploaded linpeas to identify potential privilege escalation vectors on the system.
+</p>
+<img src="images/182-24.png" alt="images/182-24.png" />
+
+<p>
+During enumeration, I discovered a local service listening on port 8500. To interact with it, I created an SSH port forwarding tunnel.
+</p>
+<img src="images/182-25.png" alt="images/182-25.png" />
+
+<p>
+After forwarding the port, I enumerated the exposed services and identified HashiCorp software running version 1.19.2.
+</p>
+<img src="images/182-26.png" alt="images/182-26.png" />
+<img src="images/182-27.png" alt="images/182-27.png" />
+
+<p>
+I searched for known vulnerabilities affecting this version and found a relevant exploit published on Exploit-DB.
+</p>
+<p>
+<a href="https://www.exploit-db.com/exploits/46074">
+https://www.exploit-db.com/exploits/46074
+</a>
+</p>
+<img src="images/182-28.png" alt="images/182-28.png" />
+<img src="images/182-29.png" alt="images/182-29.png" />
+</section>
+
+</div>
 </body>
+
 </html>
