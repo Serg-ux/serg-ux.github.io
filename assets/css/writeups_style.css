@@ -1,0 +1,179 @@
+/* =====================
+   BASE
+===================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+   background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url("../img/wp4020129.jpg") fixed no-repeat;
+   background-size: cover;
+  color: #f3f4f6;
+}
+
+/* =====================
+   CONTAINER
+===================== */
+.page {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 40px;
+  background-color: #1a0f14;
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(185, 28, 28, 0.25);
+}
+
+/* =====================
+   TITLES
+===================== */
+.title {
+  text-align: center;
+  font-size: 2.4rem;
+  margin-bottom: 50px;
+  color: #f87171;
+  font-family: 'Segoe UI Black', Tahoma, sans-serif;
+}
+
+h2 {
+  color: #fca5a5;
+  border-bottom: 2px solid #7f1d1d;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+
+/* =====================
+   TEXT
+===================== */
+p {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  margin-bottom: 15px;
+  color: #e5e7eb;
+}
+
+/* =====================
+   CODE BLOCKS
+===================== */
+pre {
+  background-color: #120b0e;
+  border: 1px solid #7f1d1d;
+  padding: 16px;
+  border-radius: 10px;
+  overflow-x: auto;
+  margin: 25px 0;
+}
+
+code {
+  font-family: Consolas, monospace;
+  color: #fb7185;
+}
+
+/* =====================
+   INLINE HIGHLIGHT
+===================== */
+.highlight {
+  background-color: #2a1218;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #fb7185;
+  font-weight: 600;
+}
+
+/* =====================
+   LISTS
+===================== */
+ul {
+  margin-left: 20px;
+  margin-bottom: 20px;
+}
+
+li {
+  margin-bottom: 10px;
+}
+
+/* =====================
+   IMAGES
+===================== */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 25px 0;
+  border: 1px solid #7f1d1d;
+  box-shadow: 0 0 15px rgba(185, 28, 28, 0.3);
+}
+
+/* =====================
+   LINKS
+===================== */
+a {
+  color: #f87171;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: #fecaca;
+}
+
+/* =====================
+   SECTIONS
+===================== */
+section {
+  margin-bottom: 60px;
+}
+
+/* =====================
+   RESPONSIVE
+===================== */
+@media (max-width: 1024px) {
+  .page {
+    margin: 30px 20px;
+    padding: 35px;
+  }
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+  }
+
+  p {
+    font-size: 1rem;
+  }
+
+  pre {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 25px;
+  }
+
+  .title {
+    font-size: 1.7rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  pre {
+    padding: 12px;
+  }
+}
