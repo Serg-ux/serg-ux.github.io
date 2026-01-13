@@ -7,6 +7,74 @@
   <link rel="stylesheet" href="../../assets/css/writeups_style.css" type="text/css" />
 </head>
 <body>
-<div class='page'><h1 class='title'>OpenAdmin</h1><br/><p>Portscan</p><p></p><p><img src="images/201-1.png" alt="images/201-1.png" /></p><p></p><p>Directory enumeration</p><p></p><p>	<strong>gobuster --wordlist=/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt dir -u </strong><strong><a href="http://10.10.10.171/">http://10.10.10.171/</a></strong></p><p></p><p><img src="images/201-2.png" alt="images/201-2.png" /></p><p></p><p>On /music there is  a redirection to /ona/ directory</p><p></p><p><img src="images/201-3.png" alt="images/201-3.png" /></p><p></p><p>I have a version of OpenNetAdmin 18.1.1</p><p></p><p>With searchsploit i find that this version its vulnerable to RCE</p><p></p><p><img src="images/201-4.png" alt="images/201-4.png" /></p><p></p><p>I enter with www-data user</p><p></p><p><img src="images/201-5.png" alt="images/201-5.png" /></p><p></p><p>I will try to upgrade the shell for have </p><p></p><p>There is 2 users </p><p></p><p><img src="images/201-6.png" alt="images/201-6.png" /></p><p></p><p>I find the settings to the db</p><p></p><p><img src="images/201-7.png" alt="images/201-7.png" /></p><p></p><p><img src="images/201-8.png" alt="images/201-8.png" /></p><p></p><p>Using Password reuse i can enter with user jimmy throught SSH</p><p></p><p><img src="images/201-9.png" alt="images/201-9.png" /></p><p></p><p>Interesting active port </p><p></p><p><img src="images/201-10.png" alt="images/201-10.png" /></p><p></p><p>Lets go make a portforwarding of the port</p><p></p><p><img src="images/201-11.png" alt="images/201-11.png" /></p><p></p><p><img src="images/201-12.png" alt="images/201-12.png" /></p><p></p><p>On /var/www/internal i found a post request </p><p></p><p><img src="images/201-13.png" alt="images/201-13.png" /></p><p></p><p>This contains the username jimmy and a hash sha512</p><p></p><p><img src="images/201-14.png" alt="images/201-14.png" /></p><p></p><p>We login on with this cracked passwd and the username jimmy</p><p></p><p>And we obtain a Private Key  (So probably to joanna)</p><p></p><p><img src="images/201-15.png" alt="images/201-15.png" /></p><p></p><p><img src="images/201-16.png" alt="images/201-16.png" /></p><p></p><p>For ssh connection i have to send the password too, so i will crack the ssh key with ssh2john</p><p></p><p><img src="images/201-17.png" alt="images/201-17.png" /></p><p></p><p>This password is the passsphrase for the private key</p><p></p><p><img src="images/201-18.png" alt="images/201-18.png" /></p><p></p><p>With sudo -l i see that i can execute a command as a root</p><p></p><p><img src="images/201-19.png" alt="images/201-19.png" /></p><p></p><p>With nano as root we can read files and execute commands too</p><p></p><p><img src="images/201-20.png" alt="images/201-20.png" /></p><p></p><p>So i can read the root.txt flag</p><p></p></div>
+<div class="page">
+
+<h1 class="title">OpenAdmin</h1>
+
+<section>
+<h2>Reconnaissance</h2>
+<p>The initial phase consisted of identifying open services through a port scan, which revealed the available attack surface of the target machine.</p>
+<p><img src="images/201-1.png" alt="images/201-1.png" /></p>
+</section>
+
+<section>
+<h2>Enumeration</h2>
+<p>Once the exposed services were identified, directory enumeration was performed in order to discover hidden or unlinked web resources.</p>
+<pre><code>gobuster --wordlist=/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt dir -u http://10.10.10.171/</code></pre>
+<p><img src="images/201-2.png" alt="images/201-2.png" /></p>
+<p>The enumeration revealed a <code>/music</code> endpoint which redirected to the <code>/ona/</code> directory, indicating the presence of a web application.</p>
+<p><img src="images/201-3.png" alt="images/201-3.png" /></p>
+<p>The application was identified as OpenNetAdmin version 18.1.1.</p>
+<p>Using searchsploit, it was confirmed that this specific version is vulnerable to remote code execution.</p>
+<p><img src="images/201-4.png" alt="images/201-4.png" /></p>
+</section>
+
+<section>
+<h2>Exploitation</h2>
+<p>The vulnerability was exploited successfully, resulting in a shell as the <code>www-data</code> user.</p>
+<p><img src="images/201-5.png" alt="images/201-5.png" /></p>
+<p>At this stage, the shell was limited, so an attempt was made to improve it for better interaction with the system.</p>
+<p>During local enumeration, two user accounts were identified on the system.</p>
+<p><img src="images/201-6.png" alt="images/201-6.png" /></p>
+<p>Further inspection of the OpenNetAdmin configuration files revealed database credentials.</p>
+<p><img src="images/201-7.png" alt="images/201-7.png" /></p>
+<p><img src="images/201-8.png" alt="images/201-8.png" /></p>
+<p>By reusing the discovered password, it was possible to authenticate via SSH as the user <code>jimmy</code>.</p>
+<p><img src="images/201-9.png" alt="images/201-9.png" /></p>
+</section>
+
+<section>
+<h2>Analysis</h2>
+<p>After gaining SSH access, an interesting internal port was found listening locally.</p>
+<p><img src="images/201-10.png" alt="images/201-10.png" /></p>
+<p>To interact with this service, SSH port forwarding was configured.</p>
+<p><img src="images/201-11.png" alt="images/201-11.png" /></p>
+<p><img src="images/201-12.png" alt="images/201-12.png" /></p>
+<p>Browsing the forwarded service led to the discovery of a POST request handler located under <code>/var/www/internal</code>.</p>
+<p><img src="images/201-13.png" alt="images/201-13.png" /></p>
+<p>This request contained the username <code>jimmy</code> along with a SHA-512 password hash.</p>
+<p><img src="images/201-14.png" alt="images/201-14.png" /></p>
+<p>The hash was cracked, allowing authentication with the recovered credentials.</p>
+<p>Accessing the application revealed a private SSH key, likely belonging to the user <code>joanna</code>.</p>
+<p><img src="images/201-15.png" alt="images/201-15.png" /></p>
+<p><img src="images/201-16.png" alt="images/201-16.png" /></p>
+<p>Since the private key was protected by a passphrase, it was extracted and cracked using <code>ssh2john</code>.</p>
+<p><img src="images/201-17.png" alt="images/201-17.png" /></p>
+<p>The recovered password was confirmed to be the passphrase for the private key.</p>
+<p><img src="images/201-18.png" alt="images/201-18.png" /></p>
+</section>
+
+<section>
+<h2>Privilege Escalation</h2>
+<p>After logging in as <code>joanna</code>, the sudo privileges were enumerated.</p>
+<p><img src="images/201-19.png" alt="images/201-19.png" /></p>
+<p>The output showed that the <code>nano</code> editor could be executed as root without a password.</p>
+<p><img src="images/201-20.png" alt="images/201-20.png" /></p>
+<p>Since nano allows reading arbitrary files and executing commands, this capability was leveraged to access privileged files.</p>
+<p>As a result, the <code>root.txt</code> flag was successfully read, completing the privilege escalation.</p>
+</section>
+
+</div>
 </body>
+
 </html>
