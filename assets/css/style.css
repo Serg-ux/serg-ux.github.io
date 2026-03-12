@@ -9,7 +9,40 @@ body {
   position: relative;
   background: transparent;
 }
+.blog-item{
+  background:#0a0a0a;
+  border:1px solid #1f1f1f;
+  padding:25px;
+  margin-bottom:25px;
+  transition: all 0.3s ease;
+  font-family: "Courier New", monospace;
+}
 
+.blog-item h4{
+  color:#00ff9c;
+  font-size:18px;
+}
+
+.blog-item p{
+  color:#bfbfbf;
+  font-size:14px;
+}
+
+.blog-item:hover{
+  border-color:#00ff9c;
+  transform:translateY(-5px);
+  box-shadow:0 0 15px rgba(0,255,156,0.3);
+}
+
+.blog-link{
+  color:#00ff9c;
+  text-decoration:none;
+  font-size:13px;
+}
+
+.blog-link:hover{
+  text-decoration:underline;
+}
 body::before {
   content: "";
   position: fixed;
