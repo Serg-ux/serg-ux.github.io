@@ -1,0 +1,52 @@
+# Site identity — edit these to rebrand the site
+title: cybernook
+description: A quiet corner for security research, blue team notes and CTF writeups.
+
+# Author placeholder — replace with your real identity
+author:
+  name: "$3R6UX"
+  tagline: "Security Engineer · CTF player"
+
+# Social links shown in the sidebar — replace the placeholder handles
+social:
+  linkedin: "https://www.linkedin.com/in/your-handle"
+  github: "https://github.com/your-handle"
+  hackthebox: "https://app.hackthebox.com/profile/0000000"
+  discord: "https://discordapp.com/users/000000000000000000"
+
+# GitHub Pages project site → baseurl is the repo name.
+# If you serve from a custom domain or <user>.github.io, set baseurl: ""
+# User site served at the domain root → baseurl must be empty.
+url: "https://serg-ux.github.io"
+baseurl: ""
+
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+permalink: /posts/:title/
+
+collections:
+  writeups:
+    output: true
+    permalink: /writeups/:title/
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+  - scope:
+      path: ""
+      type: writeups
+    values:
+      layout: writeup
+
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor

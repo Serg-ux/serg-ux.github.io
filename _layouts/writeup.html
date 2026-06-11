@@ -1,0 +1,27 @@
+---
+layout: default
+---
+<article>
+  <header class="article-header">
+    <a class="backlink" href="{{ '/writeups/' | relative_url }}">← Writeups</a>
+    <h1>{{ page.title }}</h1>
+    <div class="article-meta">
+      <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%b %-d, %Y" }}</time>
+      {%- if page.read_time %} · {{ page.read_time }} min read{% endif %}
+      {%- if page.platform %} · {{ page.platform }}{% endif %}
+      {%- if page.os %} · {{ page.os }}{% endif %}
+    </div>
+    <div class="item-tags" style="margin-top:12px;">
+      {% if page.difficulty %}<span class="tag tag-{{ page.difficulty | slugify }}">{{ page.difficulty }}</span>{% endif %}
+      {% for tag in page.tags %}<span class="tag tag-{{ tag | slugify }}">{{ tag }}</span>{% endfor %}
+    </div>
+  </header>
+
+  <div class="article-body">
+    {{ content }}
+  </div>
+
+  <footer class="article-footer">
+    <a class="backlink" href="{{ '/writeups/' | relative_url }}">← Back to all writeups</a>
+  </footer>
+</article>

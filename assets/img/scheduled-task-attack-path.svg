@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 150" font-family="monospace" font-size="13">
+  <style>
+    .box { fill: none; stroke: #2dd4bf; stroke-width: 1.5; rx: 8; }
+    .lbl { fill: #2dd4bf; }
+    .sub { fill: #8c97a8; font-size: 11px; }
+    .arrow { stroke: #8c97a8; stroke-width: 1.5; marker-end: url(#a); }
+  </style>
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8z" fill="#8c97a8"/>
+    </marker>
+  </defs>
+  <rect class="box" x="10" y="45" width="160" height="60" rx="8"/>
+  <text class="lbl" x="90" y="70" text-anchor="middle">Phishing payload</text>
+  <text class="sub" x="90" y="90" text-anchor="middle">drops update.exe</text>
+  <line class="arrow" x1="170" y1="75" x2="240" y2="75"/>
+  <rect class="box" x="245" y="45" width="160" height="60" rx="8"/>
+  <text class="lbl" x="325" y="70" text-anchor="middle">schtasks /create</text>
+  <text class="sub" x="325" y="90" text-anchor="middle">EID 4698 fires</text>
+  <line class="arrow" x1="405" y1="75" x2="475" y2="75"/>
+  <rect class="box" x="480" y="45" width="160" height="60" rx="8"/>
+  <text class="lbl" x="560" y="70" text-anchor="middle">Persistence</text>
+  <text class="sub" x="560" y="90" text-anchor="middle">C2 beacon on logon</text>
+</svg>

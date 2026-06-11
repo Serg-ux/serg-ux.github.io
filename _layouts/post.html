@@ -1,0 +1,26 @@
+---
+layout: default
+---
+<article>
+  <header class="article-header">
+    <a class="backlink" href="{{ '/' | relative_url }}">← Posts</a>
+    <h1>{{ page.title }}</h1>
+    <div class="article-meta">
+      <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%b %-d, %Y" }}</time>
+      {%- if page.read_time %} · {{ page.read_time }} min read{% endif %}
+    </div>
+    {% if page.tags.size > 0 %}
+    <div class="item-tags" style="margin-top:12px;">
+      {% for tag in page.tags %}<span class="tag tag-{{ tag | slugify }}">{{ tag }}</span>{% endfor %}
+    </div>
+    {% endif %}
+  </header>
+
+  <div class="article-body">
+    {{ content }}
+  </div>
+
+  <footer class="article-footer">
+    <a class="backlink" href="{{ '/' | relative_url }}">← Back to all posts</a>
+  </footer>
+</article>
