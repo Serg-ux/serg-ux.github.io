@@ -1,18 +1,18 @@
 # Site identity — edit these to rebrand the site
 title: cybernook
-description: A quiet corner for security research, blue team notes and CTF writeups.
+description: A quiet corner for security research, cyber notes and CTF writeups.
 
 # Author placeholder — replace with your real identity
 author:
   name: "$3R6UX"
-  tagline: "Security Engineer · CTF player"
+  tagline: "Pentester · CTF player"
 
 # Social links shown in the sidebar — replace the placeholder handles
 social:
-  linkedin: "https://www.linkedin.com/in/your-handle"
-  github: "https://github.com/your-handle"
+  linkedin: "https://www.linkedin.com/in/sergux"
+  github: "https://github.com/Serg-ux"
   hackthebox: "https://app.hackthebox.com/profile/0000000"
-  discord: "https://discordapp.com/users/000000000000000000"
+  discord: "https://profile.hackthebox.com/profile/019cfe27-c2d9-7234-ad13-54f97793c356"
 
 # GitHub Pages project site → baseurl is the repo name.
 # If you serve from a custom domain or <user>.github.io, set baseurl: ""
