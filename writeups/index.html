@@ -15,7 +15,7 @@ permalink: /writeups/
 <section class="listing" data-page-size="5">
   <input class="search-input" type="search" placeholder="Search writeups by title, tag or difficulty…" aria-label="Search writeups">
 
-  <div class="tag-cloud">
+  <div class="filter-bar">
     {% for diff in difficulties %}
       {% assign used = site.writeups | where: "difficulty", diff %}
       {% if used.size > 0 %}

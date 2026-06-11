@@ -13,7 +13,7 @@ title: Posts
 <section class="listing" data-page-size="5">
   <input class="search-input" type="search" placeholder="Search posts by title or tag…" aria-label="Search posts">
 
-  <div class="tag-cloud">
+  <div class="filter-bar">
     {% for tag in all_tags %}
     <button class="chip tag-{{ tag | slugify }}" data-tag="{{ tag | downcase }}">{{ tag }}</button>
     {% endfor %}

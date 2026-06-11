@@ -82,7 +82,7 @@
       background: var(--bg);
       color: var(--text);
       font-family: "Inter", system-ui, sans-serif;
-      font-size: 16px;
+      font-size: 19px;
       line-height: 1.65;
       transition: background 0.25s ease, color 0.25s ease;
     }
@@ -280,7 +280,9 @@
       color: var(--muted);
     }
 
-    .tag-cloud {
+    /* container for filter chips — NOT prefixed "tag-" to avoid colliding
+       with a generated tag class like .tag-cloud (tag named "cloud") */
+    .filter-bar {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
