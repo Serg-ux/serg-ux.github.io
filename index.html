@@ -5,17 +5,22 @@ title: Posts
 <h1 class="page-title">Posts</h1>
 <p class="page-subtitle">Research notes, detections and offensive tradecraft.</p>
 
-{%- comment -%} Tags are collected at build time from every post's front matter {%- endcomment -%}
-{% assign all_tags = "" | split: "" %}
-{% for post in site.posts %}{% assign all_tags = all_tags | concat: post.tags %}{% endfor %}
-{% assign all_tags = all_tags | uniq | sort %}
+{%- comment -%} Collect tags case-insensitively, then order chips:
+    team → difficulty → OS → remaining tags alphabetically {%- endcomment -%}
+{% assign raw_tags = "" | split: "" %}
+{% for post in site.posts %}{% assign raw_tags = raw_tags | concat: post.tags %}{% endfor %}
+{% capture tags_csv %}{% for t in raw_tags %}{{ t | downcase }},{% endfor %}{% endcapture %}
+{% assign all_tags = tags_csv | split: "," | uniq | sort %}
+{% assign priority = "blue team,red team,easy,medium,hard,insane,linux,windows" | split: "," %}
+{% capture ordered_csv %}{% for p in priority %}{% if all_tags contains p %}{{ p }},{% endif %}{% endfor %}{% for t in all_tags %}{% unless priority contains t %}{{ t }},{% endunless %}{% endfor %}{% endcapture %}
+{% assign all_tags = ordered_csv | split: "," %}
 
 <section class="listing" data-page-size="5">
   <input class="search-input" type="search" placeholder="Search posts by title or tag…" aria-label="Search posts">
 
   <div class="filter-bar">
     {% for tag in all_tags %}
-    <button class="chip tag-{{ tag | slugify }}" data-tag="{{ tag | downcase }}">{{ tag }}</button>
+    <button class="chip tag-{{ tag | slugify }}" data-tag="{{ tag }}">{{ tag }}</button>
     {% endfor %}
   </div>
 

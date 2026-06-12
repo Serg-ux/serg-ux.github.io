@@ -302,6 +302,7 @@
       line-height: 1;
       font-family: "JetBrains Mono", monospace;
       letter-spacing: 0.02em;
+      text-transform: capitalize;
       padding: 0 11px;
       border-radius: 999px;
       color: var(--muted);
@@ -390,6 +391,13 @@
     .chip.active.tag-insane {
       background: var(--t-insane);
       color: #fff;
+    }
+
+    /* abbreviation tags render fully uppercase — add new ones here */
+    .tag-dfir,
+    .tag-soc,
+    .tag-ad {
+      text-transform: uppercase;
     }
 
     .post-list {
@@ -517,9 +525,18 @@
     }
 
     .article-body img {
+      display: block;
       max-width: 100%;
       border-radius: 10px;
       border: 1px solid var(--border);
+    }
+
+    /* caption: italic line written right after an image */
+    .article-body img+em {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.85rem;
     }
 
     .article-body blockquote {

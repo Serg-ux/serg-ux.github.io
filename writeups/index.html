@@ -4,37 +4,36 @@ title: Writeups
 permalink: /writeups/
 ---
 <h1 class="page-title">Writeups</h1>
-<p class="page-subtitle">Boot2root machines, CTF challenges and retired boxes.</p>
+<p class="page-subtitle"> Cool Labs, CTF challenges and retired boxes.</p>
 
-{%- comment -%} Difficulty chips first (only those actually used), then content tags {%- endcomment -%}
-{% assign all_tags = "" | split: "" %}
-{% for w in site.writeups %}{% assign all_tags = all_tags | concat: w.tags %}{% endfor %}
-{% assign all_tags = all_tags | uniq | sort %}
-{% assign difficulties = "easy,medium,hard,insane" | split: "," %}
+{%- comment -%} Collect tags case-insensitively, then order chips:
+    difficulty → OS → writeup type → remaining tags alphabetically {%- endcomment -%}
+{% assign raw_tags = "" | split: "" %}
+{% for w in site.writeups %}{% assign raw_tags = raw_tags | concat: w.tags %}{% endfor %}
+{% capture tags_csv %}{% for t in raw_tags %}{{ t | downcase }},{% endfor %}{% endcapture %}
+{% assign all_tags = tags_csv | split: "," | uniq | sort %}
+{% assign priority = "easy,medium,hard,insane,linux,windows,box,challenge,sherlock" | split: "," %}
+{% capture ordered_csv %}{% for p in priority %}{% if all_tags contains p %}{{ p }},{% endif %}{% endfor %}{% for t in all_tags %}{% unless priority contains t %}{{ t }},{% endunless %}{% endfor %}{% endcapture %}
+{% assign all_tags = ordered_csv | split: "," %}
 
 <section class="listing" data-page-size="5">
-  <input class="search-input" type="search" placeholder="Search writeups by title, tag or difficulty…" aria-label="Search writeups">
+  <input class="search-input" type="search" placeholder="Search writeups by title, tag or difficulty…"
+    aria-label="Search writeups">
 
   <div class="filter-bar">
-    {% for diff in difficulties %}
-      {% assign used = site.writeups | where: "difficulty", diff %}
-      {% if used.size > 0 %}
-      <button class="chip tag-{{ diff }}" data-tag="{{ diff }}">{{ diff }}</button>
-      {% endif %}
-    {% endfor %}
     {% for tag in all_tags %}
-    <button class="chip tag-{{ tag | slugify }}" data-tag="{{ tag | downcase }}">{{ tag }}</button>
+    <button class="chip tag-{{ tag | slugify }}" data-tag="{{ tag }}">{{ tag }}</button>
     {% endfor %}
   </div>
 
   <ul class="post-list">
     {% assign writeups = site.writeups | sort: "date" | reverse %}
     {% for w in writeups %}
-    <li class="item"
-        data-title="{{ w.title | downcase | escape }}"
-        data-tags="{{ w.difficulty | downcase }}|{{ w.tags | join: '|' | downcase }}">
+    <li class="item" data-title="{{ w.title | downcase | escape }}"
+      data-tags="{{ w.difficulty | downcase }}|{{ w.tags | join: '|' | downcase }}">
       <div class="item-meta">
-        {{ w.date | date: "%b %-d, %Y" }}{% if w.read_time %} · {{ w.read_time }} min read{% endif %}{% if w.platform %} · {{ w.platform }}{% endif %}
+        {{ w.date | date: "%b %-d, %Y" }}{% if w.read_time %} · {{ w.read_time }} min read{% endif %}{% if w.platform %}
+        · {{ w.platform }}{% endif %}
       </div>
       <h2><a href="{{ w.url | relative_url }}">{{ w.title }}</a></h2>
       {% if w.description %}<p class="desc">{{ w.description }}</p>{% endif %}
