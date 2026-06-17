@@ -2,7 +2,7 @@
 layout: writeup
 title: "WifineticTwo"
 date: 2026-06-16
-description: "Walkthrough of HTB WifineticTwo, a Medium Linux machine."
+description: "Exploiting an OpenPLC RCE (CVE-2021-31630), pivoting across networks, and recovering a WiFi key via a Pixie Dust attack."
 tags: [Box, medium, linux]
 ---
 

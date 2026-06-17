@@ -2,7 +2,7 @@
 layout: writeup
 title: "Photon Lockdown"
 date: 2026-06-16
-description: "Walkthrough of HTB Photon Lockdown, a Hardware challenge."
+description: "Unpacking a router firmware image's SquashFS filesystem to recover the flag from its configuration files."
 tags: [Challenge]
 ---
 

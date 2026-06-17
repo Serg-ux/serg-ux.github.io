@@ -2,7 +2,7 @@
 layout: writeup
 title: "Validation"
 date: 2026-06-16
-description: "Walkthrough of HTB Validation, an Easy Linux machine."
+description: "Writing a PHP web shell through SQL injection and reusing a config-file password to log in as root."
 tags: [Box, easy, linux]
 ---
 

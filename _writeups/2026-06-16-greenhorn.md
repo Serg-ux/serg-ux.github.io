@@ -2,7 +2,7 @@
 layout: writeup
 title: "Greenhorn"
 date: 2026-06-16
-description: "Walkthrough of HTB Greenhorn, an Easy Linux machine."
+description: "Cracking a leaked hash to reach a Pluck CMS RCE, then recovering the root password from a pixelated screenshot with Depix."
 tags: [Box, easy, linux]
 ---
 

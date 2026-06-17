@@ -2,7 +2,7 @@
 layout: writeup
 title: "Administrator"
 date: 2026-06-16
-description: "Walkthrough of HTB Administrator, a Medium Windows machine."
+description: "Chaining Active Directory ACL abuse (ForceChangePassword, GenericWrite and Kerberoasting) into a DCSync attack for full domain compromise."
 tags: [Box, medium, windows, AD]
 ---
 

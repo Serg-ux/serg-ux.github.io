@@ -2,7 +2,7 @@
 layout: writeup
 title: "Editorial"
 date: 2026-06-16
-description: "Walkthrough of HTB Editorial, an Easy Linux machine."
+description: "Pivoting from an SSRF to an internal API, mining Git history for credentials, and exploiting a GitPython injection (CVE-2022-24439) as root."
 tags: [Box, easy, linux]
 ---
 

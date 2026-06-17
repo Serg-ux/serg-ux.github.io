@@ -2,7 +2,7 @@
 layout: writeup
 title: "Sightless"
 date: 2026-06-16
-description: "Walkthrough of HTB Sightless, an Easy Linux machine."
+description: "Exploiting an SQLPad template injection (CVE-2022-0944) for a foothold and abusing an exposed Chrome remote-debugging port to escalate."
 tags: [Box, easy, linux]
 ---
 

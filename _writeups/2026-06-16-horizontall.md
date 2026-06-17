@@ -2,7 +2,7 @@
 layout: writeup
 title: "Horizontall"
 date: 2026-06-16
-description: "Walkthrough of HTB Horizontall, an Easy Linux machine."
+description: "Exploiting a Strapi remote code execution, then pivoting to an internal Laravel app vulnerable to CVE-2021-3129 for root."
 tags: [Box, easy, linux]
 ---
 

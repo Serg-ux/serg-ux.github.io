@@ -2,7 +2,7 @@
 layout: writeup
 title: "MonitorsThree"
 date: 2026-06-16
-description: "Walkthrough of HTB MonitorsThree, a Medium Linux machine."
+description: "Exploiting a Cacti SQL injection and RCE, then abusing a Duplicati backup service to write a root-owned file."
 tags: [Box, medium, linux]
 ---
 

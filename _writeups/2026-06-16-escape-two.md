@@ -2,7 +2,7 @@
 layout: writeup
 title: "EscapeTwo"
 date: 2026-06-16
-description: "Walkthrough of HTB EscapeTwo, an Easy Windows machine."
+description: "Moving from MSSQL command execution to an Active Directory Certificate Services abuse (ESC4 then ESC1) for domain administrator."
 tags: [Box, easy, windows, AD]
 ---
 

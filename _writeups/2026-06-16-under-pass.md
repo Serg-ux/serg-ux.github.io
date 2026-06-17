@@ -2,7 +2,7 @@
 layout: writeup
 title: "UnderPass"
 date: 2026-06-16
-description: "Walkthrough of HTB UnderPass, an Easy Linux machine."
+description: "Enumerating a daloradius service over SNMP and abusing a privileged command's attached debugger for root."
 tags: [Box, easy, linux]
 ---
 

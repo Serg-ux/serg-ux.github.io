@@ -2,7 +2,7 @@
 layout: writeup
 title: "OpenAdmin"
 date: 2026-06-16
-description: "Walkthrough of HTB OpenAdmin, an Easy Linux machine."
+description: "Exploiting an OpenNetAdmin RCE, reusing leaked credentials over SSH, and abusing sudo nano to read root files."
 tags: [Box, easy, linux]
 ---
 

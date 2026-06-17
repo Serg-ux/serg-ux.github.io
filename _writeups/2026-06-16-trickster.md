@@ -2,7 +2,7 @@
 layout: writeup
 title: "Trickster"
 date: 2026-06-16
-description: "Walkthrough of HTB Trickster, a Medium Linux machine."
+description: "Exploiting a PrestaShop file-manager flaw (CVE-2024-34716), then a PrusaSlicer template injection inside a container, to reach root."
 tags: [Box, medium, linux]
 ---
 

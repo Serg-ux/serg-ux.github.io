@@ -2,7 +2,7 @@
 layout: writeup
 title: "Surveillance"
 date: 2026-06-16
-description: "Walkthrough of HTB Surveillance, a Medium Linux machine."
+description: "Exploiting a Craft CMS RCE (CVE-2023-41892) and chaining ZoneMinder flaws (CVE-2023-26035) to reach root."
 tags: [Box, medium, linux]
 ---
 
