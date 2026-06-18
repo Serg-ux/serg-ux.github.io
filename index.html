@@ -11,7 +11,7 @@ title: Posts
 {% for post in site.posts %}{% assign raw_tags = raw_tags | concat: post.tags %}{% endfor %}
 {% capture tags_csv %}{% for t in raw_tags %}{{ t | downcase }},{% endfor %}{% endcapture %}
 {% assign all_tags = tags_csv | split: "," | uniq | sort %}
-{% assign priority = "blue team,red team,easy,medium,hard,insane,linux,windows" | split: "," %}
+{% assign priority = "blue team,red team,very easy,easy,medium,hard,insane,linux,windows" | split: "," %}
 {% capture ordered_csv %}{% for p in priority %}{% if all_tags contains p %}{{ p }},{% endif %}{% endfor %}{% for t in all_tags %}{% unless priority contains t %}{{ t }},{% endunless %}{% endfor %}{% endcapture %}
 {% assign all_tags = ordered_csv | split: "," %}
 

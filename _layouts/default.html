@@ -27,6 +27,7 @@
       /* tag palette */
       --t-blue: #58a6ff;
       --t-red: #ff7b72;
+      --t-very-easy: #2ee6a6;
       --t-easy: #9fef00;
       --t-medium: #ffaf00;
       --t-hard: #ff3e3e;
@@ -54,6 +55,7 @@
       --shadow: rgba(20, 30, 40, 0.10);
       --t-blue: #0a69da;
       --t-red: #cf222e;
+      --t-very-easy: #0f9d6e;
       --t-easy: #4f8a00;
       --t-medium: #b07503;
       --t-hard: #cf2222;
@@ -339,6 +341,12 @@
       border-color: color-mix(in srgb, var(--t-red) 35%, transparent);
     }
 
+    .tag-very-easy {
+      color: var(--t-very-easy);
+      background: color-mix(in srgb, var(--t-very-easy) 13%, transparent);
+      border-color: color-mix(in srgb, var(--t-very-easy) 35%, transparent);
+    }
+
     .tag-easy {
       color: var(--t-easy);
       background: color-mix(in srgb, var(--t-easy) 13%, transparent);
@@ -371,6 +379,11 @@
     .chip.active.tag-red-team {
       background: var(--t-red);
       color: var(--bg);
+    }
+
+    .chip.active.tag-very-easy {
+      background: var(--t-very-easy);
+      color: #06231a;
     }
 
     .chip.active.tag-easy {
